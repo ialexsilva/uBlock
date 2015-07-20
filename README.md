@@ -33,10 +33,10 @@ uBlock Origin
 * [Finalidade & Informação Geral](#philosophy)
 * [Documentação](#documentation)
 * [Performance e Eficiência](#performance)
-  * [Memoria](#memory)
+  * [Memória](#memory)
   * [CPU](#cpu)
   * [Bloqueio](#blocking)
-  * [Testes](#quick-tests)
+  * [Testes Rápidos](#quick-tests)
 * [Instalação](#installation)
   * [Chromium](#chromium)
   * [Firefox](#firefox--firefox-for-android)
@@ -45,7 +45,7 @@ uBlock Origin
 * [Política de Privacidade](https://github.com/gorhill/uBlock/wiki/Privacy-policy)
 * [Wiki](https://github.com/gorhill/uBlock/wiki)
 
-## Philosophy
+## Filosofia
 
 uBlock Origin (or uBlock₀) is not an *ad blocker*; it's a general-purpose blocker. uBlock₀ blocks ads through its support of the [Adblock Plus filter syntax](https://adblockplus.org/en/filters). uBlock₀ [extends](https://github.com/gorhill/uBlock/wiki/Filter-syntax-extensions) the syntax and is designed to work with custom rules and filters. Furthermore, advanced mode allows uBlock₀ to work in [default-deny mode](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-default-deny), which mode will cause [all 3rd-party network requests](https://requestpolicycontinued.github.io/#what-are-cross-site-requests) to be blocked by default, unless allowed by the user.
 
@@ -63,7 +63,7 @@ By the way, looks like I still need to dispel that other myth: I've seen in [man
 
 Completely false. uBlock Origin does not "trigger" any "ads API" (whatever that is). It [prevents network requests from being made](https://github.com/gorhill/uBlock/wiki/Does-uBlock-block-ads-or-just-hide-them%3F) according to filter lists so that your browser does not connect to remote servers, period.
 
-## Documentation
+## Documentação
 
 [Quick guide: popup user interface](https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface)
 
@@ -73,7 +73,7 @@ For advanced usage, read about [dynamic filtering](https://github.com/gorhill/uB
 
 ## Performance
 
-#### Memory
+#### Memória
 
 <div align="center">
 On average, uBlock₀ <b>really</b> does make your browser run leaner. <sup>[1]</sup><br><br>
@@ -107,14 +107,14 @@ Being lean and efficient doesn't mean blocking less<br>
 <a href="https://github.com/gorhill/uBlock/wiki/uBlock-and-others%3A-Blocking-ads%2C-trackers%2C-malwares">uBlock₀ and others: Blocking ads, trackers, malwares</a>.
 </p>
 
-#### Quick tests
+#### Testes Rápidos
 
 - [Index](http://raymondhill.net/ublock/tests.html)
 - [Web page components](http://raymondhill.net/ublock/tiles1.html)
 - [Popups](http://raymondhill.net/ublock/popup.html)
 - [ABP Test Pages](https://testpages.adblockplus.org/)
 
-## Installation
+## Instalação
 
 Feel free to read [about the extension's required permissions](https://github.com/gorhill/uBlock/wiki/About-the-required-permissions).
 
@@ -142,7 +142,7 @@ To benefit from uBlock Origin's higher efficiency, it's advised that you don't u
 
 See the [releases pages](https://github.com/gorhill/uBlock/releases) for a history of releases and highlights for each release.
 
-## About
+## Sobre
 
 [uBlock Origin's manifesto](MANIFESTO.md).
 
@@ -155,6 +155,6 @@ all for free.
 
 You can contribute by helping translate uBlock₀ [on Crowdin](https://crowdin.net/project/ublock).
 
-## License
+## Licença
 
 [GPLv3](https://github.com/gorhill/uBlock/blob/master/LICENSE.txt).
