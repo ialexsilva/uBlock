@@ -2,21 +2,6 @@
 [![Crowdin](https://d322cqt584bo4o.cloudfront.net/ublock/localized.png)](https://crowdin.com/project/ublock)
 
 ***
-
-There is an idea floating around that uBlock Origin is a _lesser_ branch relative to [uBlock](https://github.com/chrisaljoudi/uBlock)<sup>[1]</sup>.
-
-The current reality is that there are *two branches*, not an official one and a lesser one. I keep developing my branch the same way and in the same spirit I have since [the beginning of uBlock in June 23, 2014](http://www.wilderssecurity.com/threads/ublock-a-lean-and-fast-blocker.365273/), so in substance uBlock Origin _is_ the original uBlock.
-
-**uBlock Origin is _completely_ unrelated to the web site `ublock.org`:** the donations sought by `ublock.org` are _not_ benefiting any of those who contributed most to create uBlock ([developers](https://github.com/gorhill/uBlock/graphs/contributors)<sup>[2]</sup>, [translators](https://crowdin.com/project/ublock), and all those who put efforts in opening detailed issues). For the differences in features between uBlock Origin and uBlock, you are more likely than anywhere else to find an unbiased explanation in this [Wikipedia article](http://en.wikipedia.org/wiki/UBlock).
-
-Somewhere toward the end of May, I decided I will not contribute code anymore to this [uBlock branch](https://github.com/chrisaljoudi/uBlock).<sup>[3]</sup>
-
-<sub>[1] [An example](https://www.ublock.org/faq/). [Another one](https://addons.mozilla.org/en-US/firefox/addon/ublock-origin/reviews/716364/).</sub><br>
-<sub>[2] Keep in mind these charts do not take into account all the work done on the wiki (doc, benchmarks), which work was for the most part not contributed by the individual behind `ublock.org`. </sub><br>
-<sub>[3] Reasons: [this](https://en.wikipedia.org/w/index.php?title=UBlock&type=revision&diff=662527440&oldid=662107368) vs. [this](https://github.com/chrisaljoudi/uBlock/commits/master?author=gorhill), and [this](https://www.reddit.com/r/ublock/comments/38lf1y/any_difference_between_ublock_and_ublock_origin/crwhmwt), and overall because of serious incompatibilities in the spirit of the project.</sub><br>
-
-*** 
-
 <h1 align="center">
 <sub>
 <img  src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/img/icon38@2x.png"
@@ -27,35 +12,37 @@ uBlock Origin
 </h1>
 <p align="center">
 <sup> <!-- Pronounciation -->
-      pronounced <i>you-block origin</i> (<code>/ˈjuːˌblɒk/</code>) — <i>you</i> decide what enters your browser.
+      pronunciado como <i>you-block origin</i> (<code>/ˈjuːˌblɒk/</code>) — <i>you</i>(você) decide o que executa no seu navegador.
 </sup>
 <br>
 <sup> <!-- Languages -->
       <img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/img/languageicon-36.png" width="18" height="18">
       <sup>
+            <a href="https://github.com/gorhill/uBlock/blob/master/README.md#-µblock">
             English,          <a href="https://github.com/fang5566/uBlock/blob/master/README.md#-µblock">
             Chinese (中文),   </a><a href="https://github.com/delightbot/uBlock/blob/master/README.md#ublock">
-            Korean (한국어)   </a>
+            Korean (한국어),<a/>
+            Português (Brasil)
       </sup>
 </sup>
 </p>
 
 
-**An efficient blocker add-on for various browsers. Fast, potent, and lean.**
+**Uma bloqueador eficiente para varios navegadores. Rápido, potente e leve.**
 
-* [Purpose & General Info](#philosophy)
-* [Documentation](#documentation)
-* [Performance and Efficiency](#performance)
-  * [Memory](#memory)
+* [Finalidade & Informação Geral](#philosophy)
+* [Documentação](#documentation)
+* [Performance e Eficiência](#performance)
+  * [Memoria](#memory)
   * [CPU](#cpu)
-  * [Blocking](#blocking)
-  * [Quick tests](#quick-tests)
-* [Installation](#installation)
+  * [Bloqueio](#blocking)
+  * [Testes](#quick-tests)
+* [Instalação](#installation)
   * [Chromium](#chromium)
   * [Firefox](#firefox--firefox-for-android)
   * [Safari](#safari)
-* [Release History](#release-history)
-* [Privacy policy](https://github.com/gorhill/uBlock/wiki/Privacy-policy)
+* [Histórico de Lançamentos](#release-history)
+* [Política de Privacidade](https://github.com/gorhill/uBlock/wiki/Privacy-policy)
 * [Wiki](https://github.com/gorhill/uBlock/wiki)
 
 ## Philosophy
