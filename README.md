@@ -98,7 +98,7 @@ uBlock₀ is also easy on the CPU<br>
 <sup>Details of the benchmark available in <a href="https://github.com/gorhill/uBlock/blob/master/doc/benchmarks/cpu-usage-overall-20141226.ods">this LibreOffice spreadsheet</a>.</sup>
 </p>
 
-#### Blocking
+#### Bloqueio
 
 <p align="center">
 Being lean and efficient doesn't mean blocking less<br>
@@ -120,11 +120,11 @@ Feel free to read [about the extension's required permissions](https://github.co
 
 #### Chromium
 
-You can install the latest version [manually](https://github.com/gorhill/uBlock/tree/master/dist#install), from the [Chrome Store](https://chrome.google.com/webstore/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm), or from the [Opera store](https://addons.opera.com/en-gb/extensions/details/ublock/).
+Você pode instalar a ultima versão [manualmente](https://github.com/gorhill/uBlock/tree/master/dist#install), da [Chrome Store](https://chrome.google.com/webstore/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm), ou da [Opera store](https://addons.opera.com/en-gb/extensions/details/ublock/).
 
-#### Firefox / Firefox for Android
+#### Firefox / Firefox para Android
 
-[Firefox Add-ons web site](https://addons.mozilla.org/firefox/addon/ublock-origin/), or install manually by downloading the latest [uBlock0.firefox.xpi](https://github.com/gorhill/uBlock/releases) file, and by dragging the downloaded `xpi` file to your add-on page.
+[Firefox Add-ons web site](https://addons.mozilla.org/firefox/addon/ublock-origin/), ou instalar manualmente baixando a última versão do arquivo [uBlock0.firefox.xpi](https://github.com/gorhill/uBlock/releases) e arrastando o arquivo `xpi` baixado na página de add-on.
 
 Of interest: [Deploying uBlock Origin for Firefox with CCK2 and Group Policy](http://decentsecurity.com/ublock-for-firefox-deployment/).
 
