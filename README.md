@@ -47,7 +47,7 @@ uBlock Origin
 
 ## Finalidade
 
-uBlock Origin (ou uBlock₀) não é somente um *bloqueador de anúncios*; é um bloqueador de uso geral. uBlock₀ bloqueia anúncios através do suporte de [Adblock Plus sintaxe de filtro](https://adblockplus.org/en/filters). uBlock₀ [estende](https://github.com/gorhill/uBlock/wiki/Filter-syntax-extensions) a sintaxe é projetada para funcionar com regras e filtros personalizados. Além disso, o modo avançado permite uBlock₀ funcionar em [modo default-deny](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-default-deny), modo que irá fazer [todos pedidos de rede de terceiros](https://requestpolicycontinued.github.io/#what-are-cross-site-requests) serem bloqueados por padrão, a menos que seja permitido pelo usuário.
+uBlock Origin (ou uBlock₀) não é somente um *bloqueador de anúncios*; é um bloqueador de uso geral. uBlock₀ bloqueia anúncios através do suporte da [sintaxe de filtro do Adblock Plus](https://adblockplus.org/en/filters). uBlock₀ [estende](https://github.com/gorhill/uBlock/wiki/Filter-syntax-extensions) a sintaxe que é projetada para funcionar com regras e filtros personalizados. Além disso, o modo avançado permite uBlock₀ funcione em [modo padrão-bloquear](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-default-deny), modo que irá fazer [todos pedidos de rede de terceiros](https://requestpolicycontinued.github.io/#what-are-cross-site-requests) serem bloqueados por padrão, a menos que seja permitido pelo usuário.
 
 Dito isto, é importante observar que o uso de um bloqueador é de **NÃO** [roubar](https://twitter.com/LeaVerou/status/518154828166725632). Não caia nessa ideia. A consequência lógica _final_ de que `bloquear = roubar` é a criminalização do direito inalienável à privacidade.
 
@@ -110,9 +110,9 @@ Ser leve e eficiente não significa bloquear menos<br>
 #### Testes Rápidos
 
 - [Index](http://raymondhill.net/ublock/tests.html)
-- [Web page components](http://raymondhill.net/ublock/tiles1.html)
+- [Componentes da página](http://raymondhill.net/ublock/tiles1.html)
 - [Popups](http://raymondhill.net/ublock/popup.html)
-- [ABP Test Pages](https://testpages.adblockplus.org/)
+- [Páginas de teste ABP](https://testpages.adblockplus.org/)
 
 ## Instalação
 
@@ -124,7 +124,7 @@ Você pode instalar a ultima versão [manualmente](https://github.com/gorhill/uB
 
 #### Firefox / Firefox para Android
 
-[Firefox Add-ons web site](https://addons.mozilla.org/firefox/addon/ublock-origin/), ou instalar manualmente baixando a última versão do arquivo [uBlock0.firefox.xpi](https://github.com/gorhill/uBlock/releases) e arrastando e soltando o arquivo `xpi` baixado na página de add-on.
+[Site de Add-ons do Firefox](https://addons.mozilla.org/firefox/addon/ublock-origin/), ou instalar manualmente baixando a última versão do arquivo [uBlock0.firefox.xpi](https://github.com/gorhill/uBlock/releases) e arrastando e soltando o arquivo `xpi` baixado na página de add-on.
 
 Do interesse: [Implantando o uBlock Origin para o Firefox com CCK2 e diretiva de grupo.](http://decentsecurity.com/ublock-for-firefox-deployment/).
 
