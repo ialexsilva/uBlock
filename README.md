@@ -116,7 +116,7 @@ Being lean and efficient doesn't mean blocking less<br>
 
 ## Instalação
 
-Feel free to read [about the extension's required permissions](https://github.com/gorhill/uBlock/wiki/About-the-required-permissions).
+Sinta-se livre para ler [sobre as permissões necessárias da extensão](https://github.com/gorhill/uBlock/wiki/About-the-required-permissions).
 
 #### Chromium
 
@@ -130,30 +130,30 @@ Of interest: [Deploying uBlock Origin for Firefox with CCK2 and Group Policy](ht
 
 #### Safari
 
-There is no support for Safari for uBlock Origin.
+Não há suporte no Safari para uBlock Origin.
 
-Best is that you install [chrisaljoudi/uBlock](https://github.com/chrisaljoudi/uBlock), which has official support for Safari.
+Mais você pode instalar [chrisaljoudi/uBlock](https://github.com/chrisaljoudi/uBlock), que tem suporte oficial para o Safari.
 
 #### Nota para os usuários de todos navegadores
 
-To benefit from uBlock Origin's higher efficiency, it's advised that you don't use other inefficient blockers at the same time (such as AdBlock or Adblock Plus). uBlock₀ will do [as well or better](#blocking) than most popular ad blockers.
+Para beneficiar da eficiência mais elevada do uBlock Origin's, é aconselhavel que você não use outros bloqueadores ao mesmo tempo (como o AdBlock ou Adblock Plus). uBlock₀ vai funcionar [tão bem ou melhor](#blocking) do que a maioria dos bloqueadores de anúncios populares.
 
 ## Histórico de Lançamentos
 
-See the [releases pages](https://github.com/gorhill/uBlock/releases) for a history of releases and highlights for each release.
+Veja a [página de lançamentos](https://github.com/gorhill/uBlock/releases) para ver o histórico de lançamentos e destaques de cada lançamento.
 
 ## Sobre
 
-[uBlock Origin's manifesto](MANIFESTO.md).
+[Manifesto do uBlock Origin's](MANIFESTO.md).
 
-Free. Open source. For users by users. No donations sought.
+Gratuito. Código Aberto. De usuários para usuários. Não aceitamos doações.
 
-Without the preset lists of filters, this extension is nothing. So if ever you
-really do want to contribute something, think about the people working hard
-to maintain the filter lists you are using, which were made available to use by
-all for free.
+Sem as listas predefinidas de filtros, esta extensão não é nada. 
+Por isso, se você nunca contribuiu com alguma coisa, pense nas pessoas que trabalham duro
+para manter as listas de filtro que você está usando, que foram disponibilizadas para usar
+tudo de graça.
 
-You can contribute by helping translate uBlock₀ [on Crowdin](https://crowdin.net/project/ublock).
+Você pode contribuir ajudando a traduzir uBlock₀ [no Crowdin](https://crowdin.net/project/ublock).
 
 ## Licença
 
