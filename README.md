@@ -76,7 +76,7 @@ Para uso avançado, leia sobre [filtragem dinâmica](https://github.com/gorhill/
 #### Memória
 
 <div align="center">
-Em média, o uBlock₀ <b>realmente</b> faz seu navegador executar mais leve <sup>[1]</sup><br><br>
+Em média, o uBlock₀ <b>realmente</b> faz com que seu navegador execute mais leve <sup>[1]</sup><br><br>
 
 Chromium <sup>[2]</sup><br>
 <img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/benchmarks/mem-usage-overall-chart-20141224.png" /><br><br>
