@@ -18,9 +18,9 @@ uBlock Origin
 <sup> <!-- Languages -->
       <img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/img/languageicon-36.png" width="18" height="18">
       <sup>
-            <a href="https://github.com/gorhill/uBlock/blob/master/README.md#-µblock">
-            English,          <a href="https://github.com/fang5566/uBlock/blob/master/README.md#-µblock">
-            Chinese (中文),   </a><a href="https://github.com/delightbot/uBlock/blob/master/README.md#ublock">
+            <a href="https://github.com/gorhill/uBlock/blob/master/README.md#-ublock-origin">
+            English,          <a href="https://github.com/fang5566/uBlock/blob/master/README.md#-ublock-origin">
+            Chinese (中文),   </a><a href="https://github.com/delightbot/uBlock/blob/master/README.md#ublock-origin">
             Korean (한국어),<a/>
             Português (Brasil)
       </sup>
