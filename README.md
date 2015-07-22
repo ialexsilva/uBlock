@@ -39,7 +39,7 @@ uBlock Origin
   * [Testes Rápidos](#testes-rápidos)
 * [Instalação](#instalação)
   * [Chromium](#chromium)
-  * [Firefox](#firefox--firefox-for-android)
+  * [Firefox](#firefox--firefox-para-android)
   * [Safari](#safari)
 * [Histórico de Lançamentos](#histórico-de-lançamentos)
 * [Política de Privacidade](https://github.com/gorhill/uBlock/wiki/Privacy-policy)
