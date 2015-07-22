@@ -88,7 +88,7 @@ Firefox<br>
 
 <sup>[1] Detalhes do benchmark disponível na <a href="https://github.com/gorhill/uBlock/wiki/Firefox-version:-benchmarking-memory-footprint">versão do Firefox: benchmarking consumo de memória</a>.</sup><br>
 
-<sup>[2] Nota importante: There is currently a [bug in Chromium v39 to v41 which causes a new memory leak each time the popup UI of an extension is opened](https://code.google.com/p/chromium/issues/detail?id=441500). This affects <i>all</i> extensions. Keep this in mind when measuring Chromium's memory usage. In the benchmarks, I avoided opening the popups completely.</sup><br>
+<sup>[2] Nota importante: Existe atualmente um [bug no Chromium v39 até v41 que causa um vazamento de memória toda vez que a janela popup da extensão é aberta](https://code.google.com/p/chromium/issues/detail?id=441500). Isso afeta <i>todas</i> extensões. Tenha isso em mente quando medir o consumo de memória do Chromium. Nos benchmarks, Eu evitei a abertura dos popups</sup><br>
 
 #### CPU
 
@@ -126,11 +126,11 @@ Você pode instalar a ultima versão [manualmente](https://github.com/gorhill/uB
 
 [Firefox Add-ons web site](https://addons.mozilla.org/firefox/addon/ublock-origin/), ou instalar manualmente baixando a última versão do arquivo [uBlock0.firefox.xpi](https://github.com/gorhill/uBlock/releases) e arrastando e soltando o arquivo `xpi` baixado na página de add-on.
 
-Do interesse: [Implantando o uBlock Origin para o Firefox com CCK2 e diretiva de grupo. Policy.](http://decentsecurity.com/ublock-for-firefox-deployment/).
+Do interesse: [Implantando o uBlock Origin para o Firefox com CCK2 e diretiva de grupo.](http://decentsecurity.com/ublock-for-firefox-deployment/).
 
 #### Safari
 
-Não há suporte no Safari para uBlock Origin.
+Não há suporte do uBlock Origin para o Safari.
 
 Mais você pode instalar [chrisaljoudi/uBlock](https://github.com/chrisaljoudi/uBlock), que tem suporte oficial para o Safari.
 
