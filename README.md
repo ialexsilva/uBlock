@@ -59,7 +59,7 @@ Depois de instalar o uBlock₀, você pode facilmente desmarcar qualquer uma das
 
 A propósito, parece que eu ainda preciso dissipar outro mito: Que eu vi em [muitos](https://np.reddit.com/r/AskReddit/comments/35s2je/whats_a_product_that_everybody_uses_but_nobody/cr7h8l6) [lugares](https://twitter.com/1v1MeInBed/status/611658444244951040) [ultimamente](https://np.reddit.com/r/explainlikeimfive/comments/363569/eli5_how_come_adblockublock_doesnt_let_the_ad/crafo5p?context=3) a seguinte afirmação:
 
-> ublock bloqueia anúncios exatamente como adblock plus, mas aciona a API anúncios para simular que tenha visto
+> ublock bloqueia anúncios exatamente como adblock plus, mas aciona a API de anúncios para simular que tenha visualizado
 
 Completamente falso. uBlock Origin não "aciona" nenhuma "API de anúncios" (seja lá o que for). Ele [impede que pedidos de rede sejam feitas](https://github.com/gorhill/uBlock/wiki/Does-uBlock-block-ads-or-just-hide-them%3F) de acordo com as listas de filtros, para que seu navegador não se conectar a servidores remotos, período.
 
