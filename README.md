@@ -51,11 +51,11 @@ uBlock Origin (ou uBlock₀) não é somente um *bloqueador de anúncios*; é um
 
 Dito isto, é importante observar que o uso de um bloqueador **NÃO É** [roubar](https://twitter.com/LeaVerou/status/518154828166725632). Não caia nessa ideia. A consequência lógica _final_ de que `bloquear = roubar` é a criminalização do direito inalienável à privacidade.
 
-Anúncios, "intrusivo" ou não, são apenas as partes visíveis dos mecanismos de invasão a privacidade entrando no seu navegador quando você visita a maioria dos sites hoje em dia. **uBlock₀'s o principal objetivo é ajudar os usuários a neutralizar tais mecanismos para invadir a privacidade** — de uma forma que acolhe aqueles usuários que não desejam o uso mais avançado envolvido (como [µMatrix](https://github.com/gorhill/uMatrix)).
+Anúncios, "intrusivo" ou não, são apenas as partes visíveis dos mecanismos de invasão a privacidade entrando no seu navegador quando você visita a maioria dos sites hoje em dia. **O principal objetivo do uBlock₀'s é ajudar os usuários a neutralizar tais mecanismos de invasão a privacidade** — de uma forma que acolhe aqueles usuários que não queiram o uso mais avançado envolvido (como [µMatrix](https://github.com/gorhill/uMatrix)).
 
 _EasyList_, _Peter Lowe's Adservers_, _EasyPrivacy_ e _Malware domains_ são ativadas por padrão quando você instala o uBlock₀. Muitas outras listas estão disponíveis para bloquear rastreadores, analytics e muito mais. Arquivos hosts também são suportados.
 
-Depois de instalar o uBlock₀, você pode facilmente desmarcar qualquer uma das listas predefinidas, se você acha que o uBlock₀ bloqueia muito. Para referência, o Adblock Plus instala somente _EasyList_ por padrão.
+Depois de instalar o uBlock₀, você pode facilmente desmarcar qualquer uma das listas predefinidas, se você pensa que o uBlock₀ bloqueia muito. Para referência, o Adblock Plus instala somente _EasyList_ por padrão.
 
 A propósito, parece que eu ainda preciso dissipar outro mito: Que eu vi em [muitos](https://np.reddit.com/r/AskReddit/comments/35s2je/whats_a_product_that_everybody_uses_but_nobody/cr7h8l6) [lugares](https://twitter.com/1v1MeInBed/status/611658444244951040) [ultimamente](https://np.reddit.com/r/explainlikeimfive/comments/363569/eli5_how_come_adblockublock_doesnt_let_the_ad/crafo5p?context=3) a seguinte afirmação:
 
