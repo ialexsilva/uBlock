@@ -47,27 +47,27 @@ uBlock Origin
 
 ## Finalidade
 
-uBlock Origin (ou uBlock₀) não é somente um *ad blocker*; é um bloqueador de uso geral. uBlock₀ bloqueia anúncios através do suporte de [Adblock Plus sintaxe de filtro](https://adblockplus.org/en/filters). uBlock₀ [estende](https://github.com/gorhill/uBlock/wiki/Filter-syntax-extensions) a sintaxe and is designed to work with custom rules and filters. Furthermore, advanced mode allows uBlock₀ to work in [default-deny mode](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-default-deny), which mode will cause [all 3rd-party network requests](https://requestpolicycontinued.github.io/#what-are-cross-site-requests) to be blocked by default, unless allowed by the user.
+uBlock Origin (ou uBlock₀) não é somente um *ad blocker*; é um bloqueador de uso geral. uBlock₀ bloqueia anúncios através do suporte de [Adblock Plus sintaxe de filtro](https://adblockplus.org/en/filters). uBlock₀ [estende](https://github.com/gorhill/uBlock/wiki/Filter-syntax-extensions) a sintaxe é projetada para funcionar com regras e filtros personalizados. Além disso, o modo avançado permite uBlock₀ funcionar em [modo default-deny](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-default-deny), modo que irá fazer [todos pedidos de rede de terceiros](https://requestpolicycontinued.github.io/#what-are-cross-site-requests) serem bloqueados por padrão, a menos que seja permitido pelo usuário.
 
-That said, it's important to note that using a blocker is **NOT** [theft](https://twitter.com/LeaVerou/status/518154828166725632). Don't fall for this creepy idea. The _ultimate_ logical consequence of `blocking = theft` is the criminalisation of the inalienable right to privacy.
+Dito isto, é importante observar que o uso de um bloqueador é de **NÃO** [roubar](https://twitter.com/LeaVerou/status/518154828166725632). Não caia nessa ideia. A consequência lógica _final_ de que `bloquear = roubar` é a criminalização do direito inalienável à privacidade.
 
-Ads, "unintrusive" or not, are just the visible portions of privacy-invading apparatus entering your browser when you visit most sites nowadays. **uBlock₀'s main goal is to help users neutralize such privacy-invading apparatus** — in a way that welcomes those users who don't wish to use more technical, involved means (such as [µMatrix](https://github.com/gorhill/uMatrix)).
+Anúncios, "intrusivo" ou não, são apenas as partes visíveis dos mecanismos de invasão a privacidade entrando no seu navegador quando você visita a maioria dos sites hoje em dia. **uBlock₀'s o principal objetivo é ajudar os usuários a neutralizar tais mecanismos para invadir a privacidade** — in a way that welcomes those users who don't wish to use more technical, involved means (como [µMatrix](https://github.com/gorhill/uMatrix)).
 
-_EasyList_, _Peter Lowe's Adservers_, _EasyPrivacy_ and _Malware domains_ are enabled by default when you install uBlock₀. Many more lists are readily available to block trackers, analytics, and more. Hosts files are also supported.
+_EasyList_, _Peter Lowe's Adservers_, _EasyPrivacy_ e _Malware domains_ são ativadas por padrão quando você instala o uBlock₀. Muitas outras listas estão disponíveis para bloquear rastreadores, analytics e muito mais. Arquivos hosts também são suportados.
 
-Once you install uBlock₀, you may easily un-select any of the pre-selected filter lists if you think uBlock₀ blocks too much. For reference, Adblock Plus installs with only _EasyList_ enabled by default.
+Depois de instalar o uBlock₀, você pode facilmente desmarcar qualquer uma das listas predefinidas, se você acha que o uBlock₀ bloqueia muito. Para referência, o Adblock Plus instala somente _EasyList_ por padrão.
 
-By the way, looks like I still need to dispel that other myth: I've seen in [many](https://np.reddit.com/r/AskReddit/comments/35s2je/whats_a_product_that_everybody_uses_but_nobody/cr7h8l6) [places](https://twitter.com/1v1MeInBed/status/611658444244951040) [lately](https://np.reddit.com/r/explainlikeimfive/comments/363569/eli5_how_come_adblockublock_doesnt_let_the_ad/crafo5p?context=3) the following assertion:
+A propósito, parece que eu ainda preciso dissipar outro mito: Que eu vi em [muitos](https://np.reddit.com/r/AskReddit/comments/35s2je/whats_a_product_that_everybody_uses_but_nobody/cr7h8l6) [lugares](https://twitter.com/1v1MeInBed/status/611658444244951040) [ultimamente](https://np.reddit.com/r/explainlikeimfive/comments/363569/eli5_how_come_adblockublock_doesnt_let_the_ad/crafo5p?context=3) a seguinte afirmação:
 
-> ublock blocks ads just like adblock plus, but triggers the ads API to think it got viewed
+> ublock bloqueia anúncios exatamente como adblock plus, mas aciona a API anúncios para simular que tenha visto
 
-Completely false. uBlock Origin does not "trigger" any "ads API" (whatever that is). It [prevents network requests from being made](https://github.com/gorhill/uBlock/wiki/Does-uBlock-block-ads-or-just-hide-them%3F) according to filter lists so that your browser does not connect to remote servers, period.
+Completamente falso. uBlock Origin não "aciona" nenhuma "API de anúncios" (seja lá o que for). Ele [impede que pedidos de rede sejam feitas](https://github.com/gorhill/uBlock/wiki/Does-uBlock-block-ads-or-just-hide-them%3F) de acordo com as listas de filtros, para que seu navegador não se conectar a servidores remotos, período.
 
 ## Documentação
 
 [Guia rápido: interface de usuário](https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface)
 
-<a href="https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface"><img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/img/popup-1.png" /></a>
+<a href="https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface"><img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/img/popup-1.png"/></a>
 
 Para uso avançado, leia sobre [filtragem dinâmica](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide) e muito mais na [uBlock₀'s wiki](https://github.com/gorhill/uBlock/wiki).
 
@@ -93,7 +93,7 @@ Firefox<br>
 #### CPU
 
 <p align="center">
-uBlock₀ também usa pouca CPU<br>
+uBlock₀ também usa poucos recursos de CPU<br>
 <img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/benchmarks/cpu-usage-overall-chart-20141226.png" /><br>
 <sup>Detalhes do benchmark disponível <a href="https://github.com/gorhill/uBlock/blob/master/doc/benchmarks/cpu-usage-overall-20141226.ods">nesta planilha do LibreOffice</a>.</sup>
 </p>
