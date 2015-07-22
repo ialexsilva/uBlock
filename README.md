@@ -49,7 +49,7 @@ uBlock Origin
 
 uBlock Origin (ou uBlock₀) não é somente um *bloqueador de anúncios*; é um bloqueador de uso geral. uBlock₀ bloqueia anúncios através do suporte da [sintaxe de filtro do Adblock Plus](https://adblockplus.org/en/filters). uBlock₀ [estende](https://github.com/gorhill/uBlock/wiki/Filter-syntax-extensions) a sintaxe que é projetada para funcionar com regras e filtros personalizados. Além disso, o modo avançado permite uBlock₀ funcione em [modo padrão-bloquear](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-default-deny), modo que irá fazer [todos pedidos de rede de terceiros](https://requestpolicycontinued.github.io/#what-are-cross-site-requests) serem bloqueados por padrão, a menos que seja permitido pelo usuário.
 
-Dito isto, é importante observar que o uso de um bloqueador é de **NÃO** [roubar](https://twitter.com/LeaVerou/status/518154828166725632). Não caia nessa ideia. A consequência lógica _final_ de que `bloquear = roubar` é a criminalização do direito inalienável à privacidade.
+Dito isto, é importante observar que o uso de um bloqueador **NÃO É** [roubar](https://twitter.com/LeaVerou/status/518154828166725632). Não caia nessa ideia. A consequência lógica _final_ de que `bloquear = roubar` é a criminalização do direito inalienável à privacidade.
 
 Anúncios, "intrusivo" ou não, são apenas as partes visíveis dos mecanismos de invasão a privacidade entrando no seu navegador quando você visita a maioria dos sites hoje em dia. **uBlock₀'s o principal objetivo é ajudar os usuários a neutralizar tais mecanismos para invadir a privacidade** — de uma forma que acolhe aqueles usuários que não desejam o uso mais avançado envolvido (como [µMatrix](https://github.com/gorhill/uMatrix)).
 
