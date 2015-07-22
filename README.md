@@ -47,7 +47,7 @@ uBlock Origin
 
 ## Finalidade
 
-uBlock Origin (ou uBlock₀) não é um *ad blocker*; é um bloqueador de uso geral. uBlock₀ bloqueia anúncios através do suporte de [Adblock Plus sintaxe de filtro](https://adblockplus.org/en/filters). uBlock₀ [estende](https://github.com/gorhill/uBlock/wiki/Filter-syntax-extensions) a sintaxe and is designed to work with custom rules and filters. Furthermore, advanced mode allows uBlock₀ to work in [default-deny mode](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-default-deny), which mode will cause [all 3rd-party network requests](https://requestpolicycontinued.github.io/#what-are-cross-site-requests) to be blocked by default, unless allowed by the user.
+uBlock Origin (ou uBlock₀) não é somente um *ad blocker*; é um bloqueador de uso geral. uBlock₀ bloqueia anúncios através do suporte de [Adblock Plus sintaxe de filtro](https://adblockplus.org/en/filters). uBlock₀ [estende](https://github.com/gorhill/uBlock/wiki/Filter-syntax-extensions) a sintaxe and is designed to work with custom rules and filters. Furthermore, advanced mode allows uBlock₀ to work in [default-deny mode](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-default-deny), which mode will cause [all 3rd-party network requests](https://requestpolicycontinued.github.io/#what-are-cross-site-requests) to be blocked by default, unless allowed by the user.
 
 That said, it's important to note that using a blocker is **NOT** [theft](https://twitter.com/LeaVerou/status/518154828166725632). Don't fall for this creepy idea. The _ultimate_ logical consequence of `blocking = theft` is the criminalisation of the inalienable right to privacy.
 
@@ -76,7 +76,7 @@ Para uso avançado, leia sobre [filtragem dinâmica](https://github.com/gorhill/
 #### Memória
 
 <div align="center">
-On average, uBlock₀ <b>really</b> does make your browser run leaner. <sup>[1]</sup><br><br>
+Em média, o uBlock₀ <b>realmente</b> faz seu navegador executar mais leve <sup>[1]</sup><br><br>
 
 Chromium <sup>[2]</sup><br>
 <img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/benchmarks/mem-usage-overall-chart-20141224.png" /><br><br>
