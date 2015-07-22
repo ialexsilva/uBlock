@@ -124,7 +124,7 @@ Você pode instalar a ultima versão [manualmente](https://github.com/gorhill/uB
 
 #### Firefox / Firefox para Android
 
-[Site de Add-ons do Firefox](https://addons.mozilla.org/firefox/addon/ublock-origin/), ou instalar manualmente baixando a última versão do arquivo [uBlock0.firefox.xpi](https://github.com/gorhill/uBlock/releases) e arrastando e soltando o arquivo `xpi` baixado na página de add-on.
+[Site de Add-ons do Firefox](https://addons.mozilla.org/firefox/addon/ublock-origin/), ou instalar manualmente baixando a última versão do arquivo [uBlock0.firefox.xpi](https://github.com/gorhill/uBlock/releases) arrastando e soltando o arquivo `xpi` baixado na página de complementos.
 
 Do interesse: [Implantando o uBlock Origin para o Firefox com CCK2 e diretiva de grupo.](http://decentsecurity.com/ublock-for-firefox-deployment/).
 
