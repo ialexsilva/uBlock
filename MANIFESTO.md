@@ -1,10 +1,10 @@
-### This is uBlock's manifesto
+### Esse é o manifesto do uBlock
 
-1. The **user decides** what web content is acceptable or not in their browser.
+1. O **usuário decide** qual conteúdo é aceitável ou não no seu navegador.
 
-The uBlock project does not support Adblock Plus' _"Acceptable Ads Manifesto"_,
-because the _"Acceptable Ads"_ marketing campaign is really the business
-plan of a for-profit entity.
+O Projeto uBlock não apoia o ' _"Manifesto de Anúncios Aceitáveis"_ do Adblock Plus,
+porque a campanha de marketing dos  _"Anúncios Aceitáveis"_ realmente é um plano de negócios
+para uma entidade de fins lucrativos.
 
-Users are best placed to know what is or is not acceptable to them. uBlock's
-sole purpose is to give users the means to enforce their own choices.
+Os usuários estão na melhor condicão de saber o que é ou não é aceitável para eles. 
+O único objetivo do uBlock é de dar aos utilizadores os meios para impor as suas próprias escolhas.
