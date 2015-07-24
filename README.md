@@ -110,7 +110,7 @@ Ser leve e eficiente não significa bloquear menos<br>
 #### Testes Rápidos
 
 - [Index](http://raymondhill.net/ublock/tests.html)
-- [Componentes da página](http://raymondhill.net/ublock/tiles1.html)
+- [Componentes da página web](http://raymondhill.net/ublock/tiles1.html)
 - [Popups](http://raymondhill.net/ublock/popup.html)
 - [Páginas de teste ABP](https://testpages.adblockplus.org/)
 
