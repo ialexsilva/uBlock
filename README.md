@@ -32,7 +32,7 @@ uBlock Origin
 
 * [Finalidade & Informação Geral](#finalidade)
 * [Documentação](#documentação)
-* [Performance e Eficiência](#performance)
+* [Desempenho e Eficiência](#desempenho)
   * [Memória](#memória)
   * [CPU](#cpu)
   * [Bloqueio](#bloqueio)
@@ -47,7 +47,7 @@ uBlock Origin
 
 ## Finalidade
 
-uBlock Origin (ou uBlock₀) não é somente um *bloqueador de anúncios*; é um bloqueador de uso geral. uBlock₀ bloqueia anúncios através do suporte da [sintaxe de filtro do Adblock Plus](https://adblockplus.org/en/filters). uBlock₀ [estende](https://github.com/gorhill/uBlock/wiki/Filter-syntax-extensions) a sintaxe que é projetada para funcionar com regras e filtros personalizados. Além disso, o modo avançado permite uBlock₀ funcione em [modo padrão-bloquear](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-default-deny), modo que irá fazer [todos pedidos de rede de terceiros](https://requestpolicycontinued.github.io/#what-are-cross-site-requests) serem bloqueados por padrão, a menos que seja permitido pelo usuário.
+uBlock Origin (ou uBlock₀) não é somente um *bloqueador de anúncios*; é um bloqueador de uso geral. uBlock₀ bloqueia anúncios através do suporte da [sintaxe de filtro do Adblock Plus](https://adblockplus.org/en/filters). uBlock₀ [estende](https://github.com/gorhill/uBlock/wiki/Filter-syntax-extensions) a sintaxe que é projetada para funcionar com regras e filtros personalizados. Além disso, o modo avançado permite uBlock₀ funcione em [modo bloquear-padrão](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-default-deny), modo que irá fazer [todos pedidos de rede de terceiros](https://requestpolicycontinued.github.io/#what-are-cross-site-requests) serem bloqueados por padrão, a menos que seja permitido pelo usuário.
 
 Dito isto, é importante observar que o uso de um bloqueador **NÃO É** [roubar](https://twitter.com/LeaVerou/status/518154828166725632). Não caia nessa ideia. A consequência lógica _final_ de que `bloquear = roubar` é a criminalização do direito inalienável à privacidade.
 
@@ -71,7 +71,7 @@ Completamente falso. uBlock Origin não "aciona" nenhuma "API de anúncios" (sej
 
 Para uso avançado, leia sobre [filtragem dinâmica](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide) e muito mais na [uBlock₀'s wiki](https://github.com/gorhill/uBlock/wiki).
 
-## Performance
+## Desempenho
 
 #### Memória
 
