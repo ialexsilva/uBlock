@@ -30,8 +30,8 @@ uBlock Origin
 
 **Uma bloqueador eficiente para varios navegadores. Rápido, potente e leve.**
 
-* [Finalidade & Informação Geral](#finalidade)
 * [Documentação](#documentação)
+* [Finalidade & Informação Geral](#finalidade)
 * [Desempenho e Eficiência](#desempenho)
   * [Memória](#memória)
   * [CPU](#cpu)
