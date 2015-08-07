@@ -65,11 +65,12 @@ Completamente falso. uBlock Origin não "aciona" nenhuma "API de anúncios" (sej
 
 ## Documentação
 
-[Guia rápido: interface de usuário](https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface)
+ Modo básico | Modo usuário avançado
+:----------:|:------------------:
+[Interface de usuário](https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface) | [Um firewall de point-and-click que pode ser configurado em uma base site por site](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide) 
+<a href="https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface"><img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/img/popup-1.png" /></a><br><sup>.<br>.</sup> | <a href="https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide"><img src="https://cloud.githubusercontent.com/assets/585534/9021740/41eac000-3821-11e5-9842-c4c6fea573c3.png" /></a><br><sup>Configure como quiser:<br>a imagem mostra scripts de terceiros e frames bloqueados por padrão em toda parte</sup>
 
-<a href="https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface"><img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/img/popup-1.png"/></a>
-
-Para uso avançado, leia sobre [filtragem dinâmica](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide) e muito mais na [uBlock₀'s wiki](https://github.com/gorhill/uBlock/wiki).
+Visite a [wiki uBlock Origin's](https://github.com/gorhill/uBlock/wiki) para ver toda documentação.
 
 ## Desempenho
 
