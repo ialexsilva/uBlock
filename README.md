@@ -147,7 +147,7 @@ Veja a [página de lançamentos](https://github.com/gorhill/uBlock/releases) par
 
 [Manifesto do uBlock Origin's](MANIFESTO.md).
 
-Gratuito. Código Aberto. De usuários para usuários. Não aceitamos doações.
+Gratuito e de Código aberto. Feito de usuários para usuários. Não aceitamos doações.
 
 Sem as listas predefinidas de filtros, esta extensão não é nada. 
 Por isso, se você nunca contribuiu com alguma coisa, pense nas pessoas que trabalham duro
