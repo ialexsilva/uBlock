@@ -124,7 +124,7 @@ Espera-se que uBlock Origin seja compatível com todos os navegadores baseados n
 
 uBlock Origin é compatível com [SeaMonkey](http://www.seamonkey-project.org/), [Pale Moon](https://www.palemoon.org/), e possivelmente outros navegadores baseados no Firefox.
 
-A versão do uBlock Origin para o Firefox tem [uma recurso extra](https://github.com/gorhill/uBlock/wiki/Inline-script-tag-filtering) atualmente ainda não está disponível para os navegadores baseados no Chromium -- que apresenta uma grande ajuda para frustrar as tentativas de muitos sites de contornar os bloqueadores.
+A versão do uBlock Origin para o Firefox tem [uma funcionalidade extra](https://github.com/gorhill/uBlock/wiki/Inline-script-tag-filtering) atualmente ainda não está disponível para os navegadores baseados no Chromium -- que apresenta uma grande ajuda para frustrar as tentativas de muitos sites de contornar os bloqueadores.
 
 Também de interesse: [Implantando o uBlock Origin para o Firefox com CCK2 e diretiva de grupo.](http://decentsecurity.com/ublock-for-firefox-deployment/).
 
