@@ -41,7 +41,7 @@ uBlock Origin
 * [Instalação](#instalação)
   * [Chromium](#chromium)
   * [Firefox](#firefox--firefox-para-android)
-  * [Safari](#safari)
+  * [Microsoft Edge](#microsoft-edge)
 * [Histórico de Lançamentos](#histórico-de-lançamentos)
 * [Política de Privacidade](https://github.com/gorhill/uBlock/wiki/Privacy-policy)
 * [Wiki](https://github.com/gorhill/uBlock/wiki)
@@ -68,10 +68,8 @@ Completamente falso. uBlock Origin não "aciona" nenhuma "API de anúncios" (sej
 
  Modo básico | Modo usuário avançado
 :----------:|:------------------:
-[Interface de usuário](https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface) | [Um firewall apontar e clicar que pode ser configurado em uma base site por site](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide) 
-<a href="https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface"><img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/img/popup-1.png" /></a><br><sup>.<br>.</sup> | <a href="https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide"><img src="https://cloud.githubusercontent.com/assets/585534/9021740/41eac000-3821-11e5-9842-c4c6fea573c3.png" /></a><br><sup>Configure como quiser:<br>a imagem mostra scripts de terceiros e frames bloqueados por padrão em toda parte</sup>
-
-Visite a [wiki uBlock Origin's](https://github.com/gorhill/uBlock/wiki) para ver toda documentação.
+[Interface de usuário](https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface) | [Um firewall de apontar e clicar que pode ser configurado em uma base site por site](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide) 
+<a href="https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface"><img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/img/popup-1.png" /></a><br><sup>.<br>.</sup> | <a href="https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide"><img src="https://cloud.githubusercontent.com/assets/585534/9293685/378d18f0-4402-11e5-9255-8ed3fdbfa957.png" /></a><br><sup>Configure como quiser:<br>a imagem mostra scripts de terceiros e frames bloqueados por padrão em toda parte</sup>
 
 ## Desempenho
 
@@ -130,13 +128,16 @@ Você pode instalar a ultima versão [manualmente](https://github.com/gorhill/uB
 
 Do interesse: [Implantando o uBlock Origin para o Firefox com CCK2 e diretiva de grupo.](http://decentsecurity.com/ublock-for-firefox-deployment/).
 
-#### Safari
+##### Debian/Ubuntu
 
-Não há suporte do uBlock Origin para o Safari.
+Agradecimentos ao colaborador do Debian [Sean Whitton](https://wiki.debian.org/SeanWhitton), os usuários do Debian 9 ou posterior ou Ubuntu 16.04 ou posterior pode simplesmente instalar usando
+`apt-get install xul-ext-ublock-origin`.
 
-Mais você pode instalar [chrisaljoudi/uBlock](https://github.com/chrisaljoudi/uBlock), que tem suporte oficial para o Safari.
+#### Microsoft Edge
 
-#### Nota para os usuários de todos navegadores
+Versão em desenvolvimento por [@nikrolls](https://github.com/nikrolls): <https://github.com/nikrolls/uBlock-Edge#edge>.
+
+#### Nota para usuários de todos navegadores
 
 Para beneficiar da eficiência mais elevada do uBlock Origin's, é aconselhavel que você não use outros bloqueadores ao mesmo tempo (como o AdBlock ou Adblock Plus). uBlock₀ vai funcionar [tão bem ou melhor](#blocking) do que a maioria dos bloqueadores de anúncios populares.
 
