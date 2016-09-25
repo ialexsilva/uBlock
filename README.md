@@ -76,19 +76,17 @@ Completamente falso. uBlock Origin não "aciona" nenhuma "API de anúncios" (sej
 #### Memória
 
 <div align="center">
-Em média, o uBlock₀ <b>realmente</b> faz com que seu navegador fique mais leve <sup>[1]</sup><br><br>
+Em média, uBlock Origin faz com que seu navegador fique mais leve <sup>[1]</sup><br><br>
 
-Chromium <sup>[2]</sup><br>
-<img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/benchmarks/mem-usage-overall-chart-20141224.png" /><br><br>
+Chromium
+<img src="https://cloud.githubusercontent.com/assets/585534/10074141/15f04128-629c-11e5-9155-177fd4909083.png" /><br><br>
 
 Firefox<br>
-<img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/benchmarks/mem-usage-overall-chart-20150205.png" /><br><br>
+<img src="https://cloud.githubusercontent.com/assets/585534/10074130/0577118c-629c-11e5-9902-bf367c6a96c3.png" /><br><br>
 
 </div>
 
 <sup>[1] Detalhes do benchmark disponível na <a href="https://github.com/gorhill/uBlock/wiki/Firefox-version:-benchmarking-memory-footprint">versão do Firefox: benchmarking consumo de memória</a>.</sup><br>
-
-<sup>[2] Nota importante: Existe atualmente um [bug no Chromium v39 até v41 que causa um vazamento de memória toda vez que a janela popup da extensão é aberta](https://code.google.com/p/chromium/issues/detail?id=441500). Isso afeta <i>todas</i> extensões. Tenha isso em mente quando medir o consumo de memória do Chromium. Nos benchmarks, Eu evitei a abertura dos popups</sup><br>
 
 #### CPU
 
