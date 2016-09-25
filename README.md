@@ -63,13 +63,7 @@ Anúncios, "intrusivo" ou não, são apenas as partes visíveis dos mecanismos d
 
 _EasyList_, _Peter Lowe's Adservers_, _EasyPrivacy_ e _Malware domains_ são ativadas por padrão quando você instala o uBlock₀. Muitas outras listas estão disponíveis para bloquear rastreadores, analytics e muito mais. Arquivos hosts também são suportados.
 
-Depois de instalar o uBlock₀, você pode facilmente desmarcar qualquer uma das listas predefinidas, se você pensa que o uBlock₀ bloqueia muito. Para referência, o Adblock Plus instala somente _EasyList_ por padrão.
-
-A propósito, parece que eu ainda preciso dissipar outro mito: Que eu vi em [muitos](https://np.reddit.com/r/AskReddit/comments/35s2je/whats_a_product_that_everybody_uses_but_nobody/cr7h8l6) [lugares](https://twitter.com/1v1MeInBed/status/611658444244951040) [ultimamente](https://np.reddit.com/r/explainlikeimfive/comments/363569/eli5_how_come_adblockublock_doesnt_let_the_ad/crafo5p?context=3) a seguinte afirmação:
-
-> ublock bloqueia anúncios exatamente como adblock plus, mas aciona a API de anúncios para simular que tenha visualizado
-
-Completamente falso. uBlock Origin não "aciona" nenhuma "API de anúncios" (seja lá o que for). Ele [impede que pedidos de rede sejam feitas](https://github.com/gorhill/uBlock/wiki/Does-uBlock-block-ads-or-just-hide-them%3F) de acordo com as listas de filtros, para que seu navegador não se conectar a servidores remotos, período.
+Depois de instalar o uBlock₀, você pode facilmente desmarcar qualquer uma das listas pre-selecionada, se você pensa que o uBlock₀ bloqueando muito. Para referência, o Adblock Plus instala somente a lista _EasyList_ por padrão.
 
 ## Desempenho
 
@@ -120,11 +114,15 @@ Sinta-se livre para ler [sobre as permissões necessárias da extensão](https:/
 
 Você pode instalar a ultima versão [manualmente](https://github.com/gorhill/uBlock/tree/master/dist#install), da [Chrome Store](https://chrome.google.com/webstore/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm), ou da [Opera store](https://addons.opera.com/en-gb/extensions/details/ublock/).
 
-#### Firefox / Firefox para Android
+#### Firefox / Firefox for Android
 
-[Site de Complementos do Firefox](https://addons.mozilla.org/firefox/addon/ublock-origin/), ou instalar manualmente baixando a última versão do [uBlock0.firefox.xpi](https://github.com/gorhill/uBlock/releases) arrastando e soltando o arquivo `xpi` baixado na página de complementos.
+[Site de Complementos do Firefox](https://addons.mozilla.org/addon/ublock-origin/). Há também uma versão de desenvolvimento, se você quiser testar uBlock Origin com as últimas alterações: visite a página de [_Histórico de versões do uBlock Origin_](https://addons.mozilla.org/addon/ublock-origin/versions/beta)
 
-Do interesse: [Implantando o uBlock Origin para o Firefox com CCK2 e diretiva de grupo.](http://decentsecurity.com/ublock-for-firefox-deployment/).
+uBlock Origin é compatível com [SeaMonkey](http://www.seamonkey-project.org/), [Pale Moon](https://www.palemoon.org/), e possivelmente outros navegadores baseados no Firefox.
+
+The Firefox version of uBlock Origin has [an extra feature](https://github.com/gorhill/uBlock/wiki/Inline-script-tag-filtering) currently not yet available on Chromium-based browsers -- which feature is of great help to foil attempts by many web sites to circumvent blockers.
+
+Também de interesse: [Implantando o uBlock Origin para o Firefox com CCK2 e diretiva de grupo.](http://decentsecurity.com/ublock-for-firefox-deployment/).
 
 ##### Debian/Ubuntu
 
