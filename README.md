@@ -114,6 +114,10 @@ Sinta-se livre para ler [sobre as permissões necessárias da extensão](https:/
 
 Você pode instalar a ultima versão [manualmente](https://github.com/gorhill/uBlock/tree/master/dist#install), da [Chrome Store](https://chrome.google.com/webstore/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm), ou da [Opera store](https://addons.opera.com/en-gb/extensions/details/ublock/).
 
+Espera-se que uBlock Origin seja compatível com todos os navegadores baseados no Chromium.
+
+**Importante:** Navegadores baseados no Chromium não retransmite [conexões websocket](https://en.wikipedia.org/wiki/WebSocket) Isso pode ser corrigido através da instalação da extensão companheira do uBO. [uBO-WebSocket](https://github.com/gorhill/uBO-WebSocket).
+
 #### Firefox / Firefox para Android
 
 [Site de Complementos do Firefox](https://addons.mozilla.org/addon/ublock-origin/). Há também uma versão de desenvolvimento, se você quiser testar uBlock Origin com as últimas alterações: visite a página de [_Histórico de versões do uBlock Origin_](https://addons.mozilla.org/addon/ublock-origin/versions/beta)
@@ -145,7 +149,7 @@ Veja a [página de lançamentos](https://github.com/gorhill/uBlock/releases) par
 
 [Manifesto do uBlock Origin's](MANIFESTO.md).
 
-Gratuito e de Código aberto. Feito de usuários para usuários. Não aceitamos doações.
+Gratuito e de código aberto. Feito de usuários para usuários. Não aceitamos doações.
 
 Sem as listas predefinidas de filtros, esta extensão não é nada. 
 Por isso, se você nunca contribuiu com alguma coisa, pense nas pessoas que trabalham duro
