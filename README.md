@@ -78,7 +78,7 @@ Completamente falso. uBlock Origin não "aciona" nenhuma "API de anúncios" (sej
 <div align="center">
 Em média, uBlock Origin faz com que seu navegador fique mais leve <sup>[1]</sup><br><br>
 
-Chromium
+Chromium<br>
 <img src="https://cloud.githubusercontent.com/assets/585534/10074141/15f04128-629c-11e5-9155-177fd4909083.png" /><br><br>
 
 Firefox<br>
