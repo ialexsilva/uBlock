@@ -93,7 +93,7 @@ uBlock₀ também usa poucos recursos de CPU<br>
 #### Bloqueio
 
 <p align="center">
-Ser leve e eficiente não significa bloquear menos<br>
+Ser leve e eficiente não significa que está bloqueando menos<br>
 <img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/benchmarks/privex-201502-16.png" /><br>
 <sup>Para detalhes do benchmark, veja 
 <a href="https://github.com/gorhill/uBlock/wiki/uBlock-and-others%3A-Blocking-ads%2C-trackers%2C-malwares">uBlock₀ e outros: Bloqueadores de anúncios, rastreadores, malwares</a>.
@@ -114,13 +114,13 @@ Sinta-se livre para ler [sobre as permissões necessárias da extensão](https:/
 
 Você pode instalar a ultima versão [manualmente](https://github.com/gorhill/uBlock/tree/master/dist#install), da [Chrome Store](https://chrome.google.com/webstore/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm), ou da [Opera store](https://addons.opera.com/en-gb/extensions/details/ublock/).
 
-#### Firefox / Firefox for Android
+#### Firefox / Firefox para Android
 
 [Site de Complementos do Firefox](https://addons.mozilla.org/addon/ublock-origin/). Há também uma versão de desenvolvimento, se você quiser testar uBlock Origin com as últimas alterações: visite a página de [_Histórico de versões do uBlock Origin_](https://addons.mozilla.org/addon/ublock-origin/versions/beta)
 
 uBlock Origin é compatível com [SeaMonkey](http://www.seamonkey-project.org/), [Pale Moon](https://www.palemoon.org/), e possivelmente outros navegadores baseados no Firefox.
 
-The Firefox version of uBlock Origin has [an extra feature](https://github.com/gorhill/uBlock/wiki/Inline-script-tag-filtering) currently not yet available on Chromium-based browsers -- which feature is of great help to foil attempts by many web sites to circumvent blockers.
+A versão do uBlock Origin para o Firefox tem [uma recurso extra](https://github.com/gorhill/uBlock/wiki/Inline-script-tag-filtering) atualmente ainda não está disponível para os navegadores baseados no Chromium -- que apresenta uma grande ajuda para frustrar as tentativas de muitos sites de contornar os bloqueadores.
 
 Também de interesse: [Implantando o uBlock Origin para o Firefox com CCK2 e diretiva de grupo.](http://decentsecurity.com/ublock-for-firefox-deployment/).
 
@@ -139,7 +139,7 @@ Para beneficiar da eficiência mais elevada do uBlock Origin's, é aconselhavel 
 
 ## Histórico de Lançamentos
 
-Veja a [página de lançamentos](https://github.com/gorhill/uBlock/releases) para ver o histórico de lançamentos e destaques de cada lançamento.
+Veja a [página de lançamentos](https://github.com/gorhill/uBlock/releases) para ver o histórico de lançamentos e os destaques de cada lançamento.
 
 ## Sobre
 
