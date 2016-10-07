@@ -48,9 +48,9 @@ uBlock Origin
 
 ## Documentação
 
- Modo básico | Modo usuário avançado
+ Modo básico | Modo avançado
 :----------:|:------------------:
-[Interface de usuário](https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface) | [Um firewall de apontar e clicar que pode ser configurado em uma base site por site](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide) 
+[Interface de usuário](https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface) | [Tem um firewall de apontar e clicar que pode ser configurado site por site](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide) 
 <a href="https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface"><img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/img/popup-1.png" /></a><br><sup>.<br>.</sup> | <a href="https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide"><img src="https://cloud.githubusercontent.com/assets/585534/9293685/378d18f0-4402-11e5-9255-8ed3fdbfa957.png" /></a><br><sup>Configure como quiser:<br>a imagem mostra scripts de terceiros e frames bloqueados por padrão em toda parte</sup>
 
 ## Finalidade
