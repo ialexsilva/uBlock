@@ -48,14 +48,14 @@ uBlock Origin
 
 ## Documentação
 
- Modo básico | Modo avançado
+ Modo básico | Modo usuário avançado
 :----------:|:------------------:
 [Interface de usuário](https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface) | [Tem um firewall de apontar e clicar que pode ser configurado site por site](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide) 
-<a href="https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface"><img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/img/popup-1.png" /></a><br><sup>.<br>.</sup> | <a href="https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide"><img src="https://cloud.githubusercontent.com/assets/585534/9293685/378d18f0-4402-11e5-9255-8ed3fdbfa957.png" /></a><br><sup>Configure como quiser:<br>a imagem mostra scripts de terceiros e frames bloqueados por padrão em toda parte</sup>
+<a href="https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface"><img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/img/popup-1.png" /></a><br><sup>.<br>.</sup> | <a href="https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide"><img src="https://cloud.githubusercontent.com/assets/585534/9293685/378d18f0-4402-11e5-9255-8ed3fdbfa957.png" /></a><br><sup>Configure como quiser:<br>a imagem mostra scripts de terceiros e frames bloqueados por padrão</sup>
 
 ## Finalidade
 
-uBlock Origin (ou uBlock₀) não é somente um *bloqueador de anúncios*; é um bloqueador de uso geral. O uBlock₀ bloqueia anúncios através do suporte da [sintaxe de filtro do Adblock Plus](https://adblockplus.org/en/filters). uBlock₀ [estende](https://github.com/gorhill/uBlock/wiki/Filter-syntax-extensions) a sintaxe que é projetada para funcionar com regras e filtros personalizados. Além disso, o modo avançado permite uBlock₀ funcione em [modo bloquear-padrão](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-default-deny), modo que irá fazer [todos pedidos de rede de terceiros](https://requestpolicycontinued.github.io/#what-are-cross-site-requests) serem bloqueados por padrão, a menos que seja permitido pelo usuário.
+uBlock Origin (ou uBlock₀) não é somente um *bloqueador de anúncios*; é um bloqueador de uso geral. O uBlock₀ bloqueia anúncios através do suporte da [sintaxe de filtro do Adblock Plus](https://adblockplus.org/en/filters). uBlock₀ [estende](https://github.com/gorhill/uBlock/wiki/Filter-syntax-extensions) a sintaxe que é projetada para funcionar com regras e filtros personalizados. Além disso, o modo usuário avançado permite uBlock₀ funcionar em [modo bloquear-padrão](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-default-deny), modo que irá fazer [todos pedidos de rede de terceiros](https://requestpolicycontinued.github.io/#what-are-cross-site-requests) serem bloqueados por padrão, a menos que seja permitido pelo usuário.
 
 Dito isto, é importante notar que o uso de um bloqueador **NÃO** é [roubar](https://twitter.com/LeaVerou/status/518154828166725632). Não caia nessa ideia. A consequência lógica _final_ de que `bloquear = roubar` é a criminalização do direito inalienável a privacidade.
 
