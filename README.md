@@ -37,7 +37,7 @@ uBlock Origin
   * [Memória](#memória)
   * [CPU](#cpu)
   * [Bloqueio](#bloqueio)
-  * [Testes Rápidos](#testes-rápidos)
+  * [Outros Testes](#outros-testes)
 * [Instalação](#instalação)
   * [Chromium](#chromium)
   * [Firefox](#firefox--firefox-para-android)
@@ -57,7 +57,7 @@ uBlock Origin
 
 uBlock Origin (ou uBlock₀) não é somente um *bloqueador de anúncios*; é um bloqueador de uso geral. O uBlock₀ bloqueia anúncios através do suporte da [sintaxe de filtro do Adblock Plus](https://adblockplus.org/en/filters). uBlock₀ [estende](https://github.com/gorhill/uBlock/wiki/Filter-syntax-extensions) a sintaxe que é projetada para funcionar com regras e filtros personalizados. Além disso, o modo usuário avançado permite uBlock₀ funcionar em [modo bloquear-padrão](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-default-deny), modo que irá fazer [todos pedidos de rede de terceiros](https://requestpolicycontinued.github.io/#what-are-cross-site-requests) serem bloqueados por padrão, a menos que seja permitido pelo usuário.
 
-Dito isto, é importante notar que o uso de um bloqueador **NÃO** é [roubar](https://twitter.com/LeaVerou/status/518154828166725632). Não caia nessa ideia. A consequência lógica _final_ de que `bloquear = roubar` é a criminalização do direito inalienável a privacidade.
+Dito isto, é importante notar que o uso de um bloqueador **NÃO** é [roubar](https://twitter.com/LeaVerou/status/518154828166725632). Não caia nessa idéia. A consequência lógica _final_ de que `bloquear = roubar` é a criminalização do direito inalienável a privacidade.
 
 Anúncios, "invasivos" ou não, são apenas as partes visíveis dos mecanismos de invasão a privacidade entrando no seu navegador quando você visita a maioria dos sites hoje em dia. **O principal objetivo do uBlock₀'s é ajudar os usuários a neutralizar tais mecanismos de invasão a privacidade** — de uma forma que acolhe aqueles usuários que não queiram o uso mais avançado envolvido (como [µMatrix](https://github.com/gorhill/uMatrix)).
 
@@ -99,7 +99,7 @@ Ser leve e eficiente não significa que está bloqueando menos<br>
 <a href="https://github.com/gorhill/uBlock/wiki/uBlock-and-others%3A-Blocking-ads%2C-trackers%2C-malwares">uBlock₀ e outros: Bloqueadores de anúncios, rastreadores, malwares</a>.
 </p>
 
-#### Testes Rápidos
+#### Outros Testes
 
 - [Index](http://raymondhill.net/ublock/tests.html)
 - [Componentes da página web](http://raymondhill.net/ublock/tiles1.html)
