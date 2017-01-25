@@ -150,7 +150,7 @@ Para beneficiar da eficiência mais elevada do uBlock Origin's, é aconselhavel 
 
 ## Histórico de Lançamentos
 
-Visite a [página de lançamentos](https://github.com/gorhill/uBlock/releases) para ver o histórico de lançamentos e os destaques de cada lançamento.
+Visite a [página de lançamentos](https://github.com/gorhill/uBlock/releases) para ver o registro de alterações e os destaques de cada lançamento.
 
 ## Sobre
 
