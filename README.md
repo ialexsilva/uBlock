@@ -42,6 +42,7 @@ uBlock Origin
   * [Chromium](#chromium)
   * [Firefox](#firefox--firefox-para-android)
   * [Microsoft Edge](#microsoft-edge)
+  - [Safari (macOS)](#safari-macos)
 * [Histórico de Lançamentos](#histórico-de-lançamentos)
 * [Política de Privacidade](https://github.com/gorhill/uBlock/wiki/Privacy-policy)
 * [Wiki](https://github.com/gorhill/uBlock/wiki)
@@ -137,7 +138,13 @@ Agradecimentos ao colaborador do Debian [Sean Whitton](https://wiki.debian.org/S
 
 Versão em desenvolvimento por [@nikrolls](https://github.com/nikrolls): <https://github.com/nikrolls/uBlock-Edge#edge>.
 
-#### Nota para usuários de todos navegadores
+#### Safari (macOS)
+
+Desenvolvedor: [@el1t](https://github.com/el1t).
+
+Versão de desenvolvimento disponível em <https://github.com/el1t/uBlock-Safari#ublock-originfor-safari>.
+
+#### Nota para os usuários de todos navegadores
 
 Para beneficiar da eficiência mais elevada do uBlock Origin's, é aconselhavel que você não use outros bloqueadores ao mesmo tempo (como o AdBlock ou Adblock Plus). uBlock₀ vai funcionar [tão bem ou melhor](#blocking) do que a maioria dos bloqueadores de anúncios populares.
 
