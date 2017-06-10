@@ -64,7 +64,7 @@ Anúncios, "invasivos" ou não, são apenas as partes visíveis dos mecanismos d
 
 _EasyList_, _Peter Lowe's Adservers_, _EasyPrivacy_ e _Malware domains_ são ativadas por padrão quando você instala o uBlock₀. Muitas outras listas estão disponíveis para bloquear rastreadores, analytics e muito mais. Arquivos hosts também são suportados.
 
-Depois de instalar o uBlock₀, você pode facilmente desmarcar qualquer uma das listas pre-selecionadas por padrão, se você pensa que o uBlock₀ está bloqueando muito. Para referência, o Adblock Plus instala somente a lista _EasyList_ por padrão.
+Depois de instalar o uBlock₀, você pode facilmente desmarcar qualquer uma das listas pre-selecionadas por padrão, se você acredita que o uBlock₀ está bloqueando muito. Para referência, o Adblock Plus instala somente a lista _EasyList_ por padrão.
 
 ## Desempenho
 
@@ -109,7 +109,7 @@ Ser leve e eficiente não significa que está bloqueando menos<br>
 
 ## Instalação
 
-Sinta-se livre para ler [sobre as permissões necessárias da extensão] em (https://github.com/gorhill/uBlock/wiki/About-the-required-permissions).
+Sinta-se livre para ler [sobre as permissões necessárias para instalação da extensão] em (https://github.com/gorhill/uBlock/wiki/About-the-required-permissions).
 
 #### Chromium
 
@@ -150,7 +150,7 @@ Para beneficiar da eficiência mais elevada do uBlock Origin's, é aconselhavel 
 
 ## Histórico de Lançamentos
 
-Visite a [página de lançamentos](https://github.com/gorhill/uBlock/releases) para ver o registro de alterações e os destaques de cada lançamento.
+Visite a [página de lançamentos] em (https://github.com/gorhill/uBlock/releases) para ver o registro de alterações e os destaques de cada lançamento.
 
 ## Sobre
 
@@ -163,7 +163,7 @@ Por isso, se você nunca contribuiu com alguma coisa, pense nas pessoas que trab
 para manter as listas de filtro que você está usando, que foram disponibilizadas para usar
 tudo de graça.
 
-Você pode contribuir ajudando a traduzir uBlock₀ [no Crowdin](https://crowdin.net/project/ublock).
+Você pode contribuir ajudando a traduzir uBlock₀ [no Crowdin] (https://crowdin.net/project/ublock).
 
 ## Licença
 
