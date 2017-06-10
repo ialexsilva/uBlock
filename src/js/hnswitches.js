@@ -1,7 +1,7 @@
 /*******************************************************************************
 
-    uBlock - a Chromium browser extension to black/white list requests.
-    Copyright (C) 2015  Raymond Hill
+    uBlock Origin - a Chromium browser extension to black/white list requests.
+    Copyright (C) 2015-2017 Raymond Hill
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,14 +19,14 @@
     Home: https://github.com/gorhill/uBlock
 */
 
-/* global punycode, µBlock */
+/* global punycode */
 /* jshint bitwise: false */
+
+'use strict';
 
 /******************************************************************************/
 
 µBlock.HnSwitches = (function() {
-
-'use strict';
 
 /******************************************************************************/
 
@@ -40,7 +40,8 @@ var switchBitOffsets = {
        'no-strict-blocking': 0,
                 'no-popups': 2,
     'no-cosmetic-filtering': 4,
-          'no-remote-fonts': 6
+          'no-remote-fonts': 6,
+           'no-large-media': 8
 };
 
 var fromLegacySwitchNames = {
@@ -80,26 +81,24 @@ var isIPAddress = function(hostname) {
     if ( reIPv4VeryCoarse.test(hostname) ) {
         return true;
     }
-    return hostname.charAt(0) === '[';
+    return hostname.startsWith('[');
 };
-
-/******************************************************************************/
 
 var toBroaderHostname = function(hostname) {
-    if ( hostname === '*' ) {
-        return '';
-    }
-    if ( isIPAddress(hostname) ) {
-        return '*';
-    }
     var pos = hostname.indexOf('.');
-    if ( pos === -1 ) {
-        return '*';
+    if ( pos !== -1 ) {
+        return hostname.slice(pos + 1);
     }
-    return hostname.slice(pos + 1);
+    return hostname !== '*' && hostname !== '' ? '*' : '';
 };
 
-HnSwitches.toBroaderHostname = toBroaderHostname;
+var toBroaderIPAddress = function(ipaddress) {
+    return ipaddress !== '*' && ipaddress !== '' ? '*' : '';
+};
+
+var selectHostnameBroadener = function(hostname) {
+    return isIPAddress(hostname) ? toBroaderIPAddress : toBroaderHostname;
+};
 
 /******************************************************************************/
 
@@ -180,7 +179,7 @@ HnSwitches.prototype.toggleBranchZ = function(switchName, targetHostname, newSta
         if ( hostname.length <= targetLen ) {
             continue;
         }
-        if ( hostname.slice(-targetLen) !== targetHostname ) {
+        if ( hostname.endsWith(targetHostname) === false ) {
             continue;
         }
         if ( hostname.charAt(hostname.length - targetLen - 1) !== '.' ) {
@@ -216,7 +215,7 @@ HnSwitches.prototype.evaluate = function(switchName, hostname) {
     if ( bitOffset === undefined ) {
         return 0;
     }
-    return (bits >> bitOffset) & 3;
+    return (bits >>> bitOffset) & 3;
 };
 
 /******************************************************************************/
@@ -228,22 +227,21 @@ HnSwitches.prototype.evaluateZ = function(switchName, hostname) {
         return false;
     }
     this.n = switchName;
-    var bits;
-    var s = hostname;
+    var bits,
+        hn = hostname,
+        broadenSource = selectHostnameBroadener(hn);
     for (;;) {
-        bits = this.switches[s] || 0;
+        bits = this.switches[hn] || 0;
         if ( bits !== 0 ) {
-            bits = bits >> bitOffset & 3;
+            bits = bits >>> bitOffset & 3;
             if ( bits !== 0 ) {
-                this.z = s;
+                this.z = hn;
                 this.r = bits;
                 return bits === 1;
             }
         }
-        s = toBroaderHostname(s);
-        if ( s === '' ) {
-            break;
-        }
+        hn = broadenSource(hn);
+        if ( hn === '' ) { break; }
     }
     this.r = 0;
     return false;
@@ -251,18 +249,21 @@ HnSwitches.prototype.evaluateZ = function(switchName, hostname) {
 
 /******************************************************************************/
 
-HnSwitches.prototype.toResultString = function() {
-    return this.r !== 1 ?
-        '' :
-        'ub:' + this.n + ': ' + this.z + ' true';
+HnSwitches.prototype.toLogData = function() {
+    return {
+        source: 'switch',
+        result: this.r,
+        raw: this.n + ': ' + this.z + ' true'
+    };
 };
 
 /******************************************************************************/
 
 HnSwitches.prototype.toString = function() {
-    var out = [];
-    var switchName, val;
-    var hostname;
+    var out = [],
+        switchName, val,
+        hostname,
+        toUnicode = punycode.toUnicode;
     for ( hostname in this.switches ) {
         if ( this.switches.hasOwnProperty(hostname) === false ) {
             continue;
@@ -272,8 +273,9 @@ HnSwitches.prototype.toString = function() {
                 continue;
             }
             val = this.evaluate(switchName, hostname);
-            if ( val === 0 ) {
-                continue;
+            if ( val === 0 ) { continue; }
+            if ( hostname.indexOf('xn--') !== -1 ) {
+                hostname = toUnicode(hostname);
             }
             out.push(switchName + ': ' + hostname + ' ' + switchStateToNameMap[val]);
         }
@@ -284,25 +286,16 @@ HnSwitches.prototype.toString = function() {
 /******************************************************************************/
 
 HnSwitches.prototype.fromString = function(text) {
-    var textEnd = text.length;
-    var lineBeg = 0, lineEnd;
-    var line, pos;
-    var fields;
-    var switchName, hostname, state;
+    var lineIter = new µBlock.LineIterator(text),
+        line, pos, fields,
+        switchName, hostname, state,
+        reNotASCII = /[^\x20-\x7F]/,
+        toASCII = punycode.toASCII;
 
     this.reset();
 
-    while ( lineBeg < textEnd ) {
-        lineEnd = text.indexOf('\n', lineBeg);
-        if ( lineEnd < 0 ) {
-            lineEnd = text.indexOf('\r', lineBeg);
-            if ( lineEnd < 0 ) {
-                lineEnd = textEnd;
-            }
-        }
-        line = text.slice(lineBeg, lineEnd).trim();
-        lineBeg = lineEnd + 1;
-
+    while ( lineIter.eot() === false ) {
+        line = lineIter.next().trim();
         pos = line.indexOf('# ');
         if ( pos !== -1 ) {
             line = line.slice(0, pos).trim();
@@ -327,7 +320,12 @@ HnSwitches.prototype.fromString = function(text) {
             continue;
         }
 
-        hostname = punycode.toASCII(fields[1]);
+        // Performance: avoid punycoding if hostname is made only of
+        // ASCII characters.
+        hostname = fields[1];
+        if ( reNotASCII.test(hostname) ) {
+            hostname = toASCII(hostname);
+        }
 
         state = fields[2];
         if ( nameToSwitchStateMap.hasOwnProperty(state) === false ) {

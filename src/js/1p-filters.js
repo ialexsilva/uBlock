@@ -1,7 +1,7 @@
 /*******************************************************************************
 
-    µBlock - a browser extension to block requests.
-    Copyright (C) 2014 Raymond Hill
+    uBlock Origin - a browser extension to block requests.
+    Copyright (C) 2014-2016 Raymond Hill
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
     Home: https://github.com/gorhill/uBlock
 */
 
-/* global vAPI, uDom */
+/* global uDom, uBlockDashboard */
 
 /******************************************************************************/
 
@@ -29,40 +29,44 @@
 
 /******************************************************************************/
 
+var messaging = vAPI.messaging;
 var cachedUserFilters = '';
-
-/******************************************************************************/
-
-var messager = vAPI.messaging.channel('1p-filters.js');
 
 /******************************************************************************/
 
 // This is to give a visual hint that the content of user blacklist has changed.
 
-function userFiltersChanged() {
-    uDom('#userFiltersApply').prop(
-        'disabled',
-        uDom('#userFilters').val().trim() === cachedUserFilters
-    );
+function userFiltersChanged(changed) {
+    if ( typeof changed !== 'boolean' ) {
+        changed = uDom.nodeFromId('userFilters').value.trim() !== cachedUserFilters;
+    }
+    uDom.nodeFromId('userFiltersApply').disabled = !changed;
+    uDom.nodeFromId('userFiltersRevert').disabled = !changed;
 }
 
 /******************************************************************************/
 
-function renderUserFilters() {
+function renderUserFilters(first) {
     var onRead = function(details) {
-        if ( details.error ) {
-            return;
-        }
+        if ( details.error ) { return; }
+        var textarea = uDom.nodeFromId('userFilters');
         cachedUserFilters = details.content.trim();
-        uDom('#userFilters').val(details.content);
+        textarea.value = details.content;
+        if ( first ) {
+            textarea.value += '\n';
+            var textlen = textarea.value.length;
+            textarea.setSelectionRange(textlen, textlen);
+            textarea.focus();
+        }
+        userFiltersChanged(false);
     };
-    messager.send({ what: 'readUserFilters' }, onRead);
+    messaging.send('dashboard', { what: 'readUserFilters' }, onRead);
 }
 
 /******************************************************************************/
 
 function allFiltersApplyHandler() {
-    messager.send({ what: 'reloadAllFilters' });
+    messaging.send('dashboard', { what: 'reloadAllFilters' });
     uDom('#userFiltersApply').prop('disabled', true );
 }
 
@@ -130,46 +134,75 @@ var exportUserFiltersToFile = function() {
     if ( val === '' ) {
         return;
     }
-    var now = new Date();
     var filename = vAPI.i18n('1pExportFilename')
-        .replace('{{datetime}}', now.toLocaleString())
+        .replace('{{datetime}}', uBlockDashboard.dateNowToSensibleString())
         .replace(/ +/g, '_');
     vAPI.download({
-        'url': 'data:text/plain;charset=utf-8,' + encodeURIComponent(val),
+        'url': 'data:text/plain;charset=utf-8,' + encodeURIComponent(val + '\n'),
         'filename': filename
     });
 };
 
 /******************************************************************************/
 
-var userFiltersApplyHandler = function() {
+var applyChanges = function() {
+    var textarea = uDom.nodeFromId('userFilters');
+
     var onWritten = function(details) {
         if ( details.error ) {
             return;
         }
+        textarea.value = details.content;
         cachedUserFilters = details.content.trim();
         userFiltersChanged();
         allFiltersApplyHandler();
+        textarea.focus();
     };
+
     var request = {
         what: 'writeUserFilters',
-        content: uDom('#userFilters').val()
+        content: textarea.value
     };
-    messager.send(request, onWritten);
+    messaging.send('dashboard', request, onWritten);
+};
+
+var revertChanges = function() {
+    uDom.nodeFromId('userFilters').value = cachedUserFilters + '\n';
+    userFiltersChanged();
 };
 
 /******************************************************************************/
 
-uDom.onLoad(function() {
-    // Handle user interaction
-    uDom('#importUserFiltersFromFile').on('click', startImportFilePicker);
-    uDom('#importFilePicker').on('change', handleImportFilePicker);
-    uDom('#exportUserFiltersToFile').on('click', exportUserFiltersToFile);
-    uDom('#userFilters').on('input', userFiltersChanged);
-    uDom('#userFiltersApply').on('click', userFiltersApplyHandler);
+var getCloudData = function() {
+    return uDom.nodeFromId('userFilters').value;
+};
 
-    renderUserFilters();
-});
+var setCloudData = function(data, append) {
+    if ( typeof data !== 'string' ) {
+        return;
+    }
+    var textarea = uDom.nodeFromId('userFilters');
+    if ( append ) {
+        data = uBlockDashboard.mergeNewLines(textarea.value, data);
+    }
+    textarea.value = data;
+    userFiltersChanged();
+};
+
+self.cloud.onPush = getCloudData;
+self.cloud.onPull = setCloudData;
+
+/******************************************************************************/
+
+// Handle user interaction
+uDom('#importUserFiltersFromFile').on('click', startImportFilePicker);
+uDom('#importFilePicker').on('change', handleImportFilePicker);
+uDom('#exportUserFiltersToFile').on('click', exportUserFiltersToFile);
+uDom('#userFilters').on('input', userFiltersChanged);
+uDom('#userFiltersApply').on('click', applyChanges);
+uDom('#userFiltersRevert').on('click', revertChanges);
+
+renderUserFilters(true);
 
 /******************************************************************************/
 

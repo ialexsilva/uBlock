@@ -1,7 +1,7 @@
 /*******************************************************************************
 
-    µBlock - a browser extension to block requests.
-    Copyright (C) 2014 Raymond Hill
+    uBlock Origin - a browser extension to block requests.
+    Copyright (C) 2014-2017 Raymond Hill
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
     Home: https://github.com/gorhill/uBlock
 */
 
-/* global vAPI, uDom */
+/* global uDom */
 
 /******************************************************************************/
 
@@ -29,7 +29,7 @@
 
 /******************************************************************************/
 
-var messager = vAPI.messaging.channel('settings.js');
+var messaging = vAPI.messaging;
 
 /******************************************************************************/
 
@@ -56,7 +56,10 @@ var handleImportFilePicker = function() {
             if ( typeof userData.netWhitelist !== 'string' ) {
                 throw 'Invalid';
             }
-            if ( typeof userData.filterLists !== 'object' ) {
+            if (
+                typeof userData.filterLists !== 'object' &&
+                Array.isArray(userData.selectedFilterLists) === false
+            ) {
                 throw 'Invalid';
             }
         }
@@ -72,11 +75,14 @@ var handleImportFilePicker = function() {
                       .replace('{{time}}', time.toLocaleString());
         var proceed = window.confirm(msg);
         if ( proceed ) {
-            messager.send({
-                what: 'restoreUserData',
-                userData: userData,
-                file: filename
-            });
+            messaging.send(
+                'dashboard',
+                {
+                    what: 'restoreUserData',
+                    userData: userData,
+                    file: filename
+                }
+            );
         }
     };
 
@@ -99,14 +105,31 @@ var startImportFilePicker = function() {
 /******************************************************************************/
 
 var exportToFile = function() {
-    messager.send({ what: 'backupUserData' }, onLocalDataReceived);
+    messaging.send('dashboard', { what: 'backupUserData' }, function(response) {
+        if (
+            response instanceof Object === false ||
+            response.userData instanceof Object === false
+        ) {
+            return;
+        }
+        vAPI.download({
+            'url': 'data:text/plain;charset=utf-8,' +
+                   encodeURIComponent(JSON.stringify(response.userData, null, '  ')),
+            'filename': response.localData.lastBackupFile
+        });
+        onLocalDataReceived(response.localData);
+    });
 };
 
 /******************************************************************************/
 
 var onLocalDataReceived = function(details) {
     uDom('#localData > ul > li:nth-of-type(1)').text(
-        vAPI.i18n('settingsStorageUsed').replace('{{value}}', details.storageUsed.toLocaleString())
+        vAPI.i18n('settingsStorageUsed')
+            .replace(
+                '{{value}}',
+                typeof details.storageUsed === 'number' ? details.storageUsed.toLocaleString() : '?'
+            )
     );
 
     var elem, dt;
@@ -135,6 +158,15 @@ var onLocalDataReceived = function(details) {
         uDom('#localData > ul > li:nth-of-type(3) > ul > li:nth-of-type(2)').text(lastRestoreFile);
         uDom('#localData > ul > li:nth-of-type(3)').css('display', '');
     }
+
+    if ( details.cloudStorageSupported === false ) {
+        uDom('#cloud-storage-enabled').attr('disabled', '');
+    }
+    if ( details.privacySettingsSupported === false ) {
+        uDom('#prefetching-disabled').attr('disabled', '');
+        uDom('#hyperlink-auditing-disabled').attr('disabled', '');
+        uDom('#webrtc-ipaddress-hidden').attr('disabled', '');
+    }
 };
 
 /******************************************************************************/
@@ -143,18 +175,55 @@ var resetUserData = function() {
     var msg = vAPI.i18n('aboutResetDataConfirm');
     var proceed = window.confirm(msg);
     if ( proceed ) {
-        messager.send({ what: 'resetUserData' });
+        messaging.send('dashboard', { what: 'resetUserData' });
     }
 };
 
 /******************************************************************************/
 
+var synchronizeDOM = function() {
+    document.body.classList.toggle(
+        'advancedUser',
+        uDom.nodeFromId('advanced-user-enabled').checked === true
+    );
+};
+
+/******************************************************************************/
+
 var changeUserSettings = function(name, value) {
-    messager.send({
-        what: 'userSettings',
-        name: name,
-        value: value
-    });
+    messaging.send(
+        'dashboard',
+        {
+            what: 'userSettings',
+            name: name,
+            value: value
+        }
+    );
+};
+
+/******************************************************************************/
+
+var onInputChanged = function(ev) {
+    var input = ev.target;
+    var name = this.getAttribute('data-setting-name');
+    var value = input.value;
+    if ( name === 'largeMediaSize' ) {
+        value = Math.min(Math.max(Math.floor(parseInt(value, 10) || 0), 0), 1000000);
+    }
+    if ( value !== input.value ) {
+        input.value = value;
+    }
+    changeUserSettings(name, value);
+};
+
+/******************************************************************************/
+
+// Workaround for:
+// https://github.com/gorhill/uBlock/issues/1448
+
+var onPreventDefault = function(ev) {
+    ev.target.focus();
+    ev.preventDefault();
 };
 
 /******************************************************************************/
@@ -162,71 +231,40 @@ var changeUserSettings = function(name, value) {
 // TODO: use data-* to declare simple settings
 
 var onUserSettingsReceived = function(details) {
-    uDom('#collapse-blocked')
-        .prop('checked', details.collapseBlocked === true)
-        .on('change', function(){
-            changeUserSettings('collapseBlocked', this.checked);
-        });
+    uDom('[data-setting-type="bool"]').forEach(function(uNode) {
+        uNode.prop('checked', details[uNode.attr('data-setting-name')] === true)
+             .on('change', function() {
+                    changeUserSettings(
+                        this.getAttribute('data-setting-name'),
+                        this.checked
+                    );
+                    synchronizeDOM();
+                });
+    });
 
-    uDom('#icon-badge')
-        .prop('checked', details.showIconBadge === true)
-        .on('change', function(){
-            changeUserSettings('showIconBadge', this.checked);
-        });
+    uDom('[data-setting-name="noLargeMedia"] ~ label:first-of-type > input[type="number"]')
+        .attr('data-setting-name', 'largeMediaSize')
+        .attr('data-setting-type', 'input');
 
-    uDom('#context-menu-enabled')
-        .prop('checked', details.contextMenuEnabled === true)
-        .on('change', function(){
-            changeUserSettings('contextMenuEnabled', this.checked);
-        });
-
-    uDom('#color-blind-friendly')
-        .prop('checked', details.colorBlindFriendly === true)
-        .on('change', function(){
-            changeUserSettings('colorBlindFriendly', this.checked);
-        });
-
-    uDom('#advanced-user-enabled')
-        .prop('checked', details.advancedUserEnabled === true)
-        .on('change', function(){
-            changeUserSettings('advancedUserEnabled', this.checked);
-        });
-
-    uDom('#prefetching-disabled')
-        .prop('checked', details.prefetchingDisabled === true)
-        .on('change', function(){
-            changeUserSettings('prefetchingDisabled', this.checked);
-        });
-
-    uDom('#hyperlink-auditing-disabled')
-        .prop('checked', details.hyperlinkAuditingDisabled === true)
-        .on('change', function(){
-            changeUserSettings('hyperlinkAuditingDisabled', this.checked);
-        });
-
-    uDom('#webrtc-ipaddress-hidden')
-        .prop('checked', details.webrtcIPAddressHidden === true)
-        .on('change', function(){
-            changeUserSettings('webrtcIPAddressHidden', this.checked);
-        });
-
-    uDom('#experimental-enabled')
-        .prop('checked', details.experimentalEnabled === true)
-        .on('change', function(){
-            changeUserSettings('experimentalEnabled', this.checked);
-        });
+    uDom('[data-setting-type="input"]').forEach(function(uNode) {
+        uNode.val(details[uNode.attr('data-setting-name')])
+             .on('change', onInputChanged)
+             .on('click', onPreventDefault);
+    });
 
     uDom('#export').on('click', exportToFile);
     uDom('#import').on('click', startImportFilePicker);
     uDom('#reset').on('click', resetUserData);
     uDom('#restoreFilePicker').on('change', handleImportFilePicker);
+
+    synchronizeDOM();
 };
 
 /******************************************************************************/
 
 uDom.onLoad(function() {
-    messager.send({ what: 'userSettings' }, onUserSettingsReceived);
-    messager.send({ what: 'getLocalData' }, onLocalDataReceived);
+    messaging.send('dashboard', { what: 'userSettings' }, onUserSettingsReceived);
+    messaging.send('dashboard', { what: 'getLocalData' }, onLocalDataReceived);
 });
 
 /******************************************************************************/

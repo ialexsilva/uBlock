@@ -1,7 +1,7 @@
 /*******************************************************************************
 
-    µBlock - a browser extension to block requests.
-    Copyright (C) 2014 The µBlock authors
+    uBlock Origin - a browser extension to block requests.
+    Copyright (C) 2014-2017 The uBlock Origin authors
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -23,11 +23,11 @@
 
 // For background page or non-background pages
 
+'use strict';
+
 /******************************************************************************/
 
-(function() {
-
-'use strict';
+(function(self) {
 
 /******************************************************************************/
 
@@ -36,7 +36,12 @@ const {Services} = Components.utils.import(
     null
 );
 
-var vAPI = self.vAPI = self.vAPI || {};
+// https://bugs.chromium.org/p/project-zero/issues/detail?id=1225&desc=6#c10
+if ( !self.vAPI || self.vAPI.uBO !== true ) {
+    self.vAPI = { uBO: true };
+}
+
+var vAPI = self.vAPI;
 
 /******************************************************************************/
 
@@ -74,6 +79,9 @@ vAPI.insertHTML = (function() {
     const parser = Components.classes['@mozilla.org/parserutils;1']
         .getService(Components.interfaces.nsIParserUtils);
 
+    // https://github.com/gorhill/uBlock/issues/845
+    // Apparently dashboard pages execute with `about:blank` principal.
+
     return function(node, html) {
         while ( node.firstChild ) {
             node.removeChild(node.firstChild);
@@ -83,7 +91,7 @@ vAPI.insertHTML = (function() {
             html,
             parser.SanitizerAllowStyle,
             false,
-            Services.io.newURI(document.baseURI, null, null),
+            Services.io.newURI('about:blank', null, null),
             document.documentElement
         ));
     };
@@ -178,6 +186,6 @@ vAPI.localStorage.init('extensions.' + location.host + '.');
 
 /******************************************************************************/
 
-})();
+})(this);
 
 /******************************************************************************/

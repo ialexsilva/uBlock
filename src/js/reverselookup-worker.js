@@ -1,7 +1,7 @@
 /*******************************************************************************
 
-    uBlock - a browser extension to block requests.
-    Copyright (C) 2015 Raymond Hill
+    uBlock Origin - a browser extension to block requests.
+    Copyright (C) 2015-2017 Raymond Hill
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,35 +25,43 @@
 
 /******************************************************************************/
 
-var listEntries = Object.create(null);
-
-/******************************************************************************/
-
-// Helpers
-
-var rescape = function(s) {
-    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-};
+var listEntries = Object.create(null),
+    filterClassSeparator = '\n/* end of network - start of cosmetic */\n';
 
 /******************************************************************************/
 
 var fromNetFilter = function(details) {
-    var lists = [];
-
-    var entry, pos;
-    for ( var path in listEntries ) {
-        entry = listEntries[path];
-        if ( entry === undefined ) {
-            continue;
+    var lists = [],
+        compiledFilter = details.compiledFilter,
+        entry, content, pos, notFound;
+    for ( var assetKey in listEntries ) {
+        entry = listEntries[assetKey];
+        if ( entry === undefined ) { continue; }
+        content = entry.content.slice(
+            0,
+            entry.content.indexOf(filterClassSeparator)
+        );
+        pos = 0;
+        for (;;) {
+            pos = content.indexOf(compiledFilter, pos);
+            if ( pos === -1 ) { break; }
+            // We need an exact match.
+            // https://github.com/gorhill/uBlock/issues/1392
+            // https://github.com/gorhill/uBlock/issues/835
+            notFound = pos !== 0 && content.charCodeAt(pos - 1) !== 0x0A;
+            pos += compiledFilter.length;
+            if (
+                notFound ||
+                pos !== content.length && content.charCodeAt(pos) !== 0x0A
+            ) {
+                continue;
+            }
+            lists.push({
+                title: entry.title,
+                supportURL: entry.supportURL
+            });
+            break;
         }
-        pos = entry.content.indexOf(details.compiledFilter);
-        if ( pos === -1 ) {
-            continue;
-        }
-        lists.push({
-            title: entry.title,
-            supportURL: entry.supportURL
-        });
     }
 
     var response = {};
@@ -88,94 +96,96 @@ var fromNetFilter = function(details) {
 // the various compiled versions.
 
 var fromCosmeticFilter = function(details) {
-    var filter = details.rawFilter;
-    var exception = filter.lastIndexOf('#@#', 0) === 0;
+    var match = /^#@?#/.exec(details.rawFilter),
+        prefix = match[0],
+        filter = details.rawFilter.slice(prefix.length);
 
-    filter = exception ? filter.slice(3) : filter.slice(2);
+    var reFilter = new RegExp(
+            '[^\\n]*\\\\*"' +
+            reEscapeCosmetic(filter) +
+            '\\\\*"[^\\n]*',
+            'g'
+        );
 
-    var candidates = Object.create(null);
-    var response = Object.create(null);
+    var reHostname = new RegExp(
+        '^' +
+        details.hostname.split('.').reduce(
+            function(acc, item) {
+                return acc === ''
+                     ? item
+                    : '(' + acc + '\\.)?' + item;
+            },
+            ''
+        ) +
+        '$'
+    );
 
-    // First step: assuming the filter is generic, find out its compiled
-    // representation.
-    // Reference: FilterContainer.compileGenericSelector().
-    var reStr = '';
-    var matches = rePlainSelector.exec(filter);
-    if ( matches ) {
-        if ( matches[0] === filter ) {          // simple CSS selector
-            reStr = rescape('c\vlg\v');
-        } else {                                // complex CSS selector
-            reStr = rescape('c\vlg+\v');
-        }
-        reStr += '\\w+' + rescape('\v' + filter);
-    } else if ( reHighLow.test(filter) ) {      // [alt] or [title]
-        reStr = rescape('c\vhlg0\v' + filter);
-    } else if ( reHighMedium.test(filter) ) {   // [href^="..."]
-        reStr = rescape('c\vhmg0\v') + '[a-z.-]+' + rescape('\v') + '[a-z]*' + rescape(filter);
-    } else {                                    // all else
-        reStr = rescape('c\vhhg0\v' + filter);
-    }
-    candidates[details.rawFilter] = new RegExp(reStr + '(?:\\n|$)');
-
-    // Second step: find hostname-based versions.
-    // Reference: FilterContainer.compileHostnameSelector().
-    var pos;
-    var domain = details.domain;
-    var hostname = details.hostname;
-
-    if ( hostname !== '' ) {
-        for ( ;; ) {
-            candidates[hostname + '##' + filter] = new RegExp(
-                rescape('c\vh\v') +
-                '\\w+' +
-                rescape('\v' + hostname + '\v' + filter) +
-                '(?:\\n|$)'
-            );
-            // If there is no valid domain, there won't be any other
-            // version of this hostname-based filter.
-            if ( domain === '' ) {
-                break;
-            }
-            if ( hostname === domain ) {
-                break;
-            }
-            pos = hostname.indexOf('.');
-            if ( pos === -1 ) {
-                break;
-            }
-            hostname = hostname.slice(pos + 1);
-        }
-    }
-
-    // Last step: find entity-based versions.
-    // Reference: FilterContainer.compileEntitySelector().
-    pos = domain.indexOf('.');
+    var reEntity,
+        domain = details.domain,
+        pos = domain.indexOf('.');
     if ( pos !== -1 ) {
-        var entity = domain.slice(0, pos);
-        candidates[entity + '.*##' + filter] = new RegExp(
-            rescape('c\ve\v' + entity + '\v' + filter) +
-            '(?:\\n|$)'
+        reEntity = new RegExp(
+            '^' +
+            domain.slice(0, pos).split('.').reduce(
+                function(acc, item) {
+                    return acc === ''
+                         ? item
+                        : '(' + acc + '\\.)?' + item;
+                },
+                ''
+            ) +
+            '\\.\\*$'
         );
     }
+        
+    var response = Object.create(null),
+        assetKey, entry, content, found, fargs;
 
-    var re, path, entry;
-    for ( var candidate in candidates ) {
-        re = candidates[candidate];
-        for ( path in listEntries ) {
-            entry = listEntries[path];
-            if ( entry === undefined ) {
-                continue;
+    for ( assetKey in listEntries ) {
+        entry = listEntries[assetKey];
+        if ( entry === undefined ) { continue; }
+        content = entry.content.slice(
+            entry.content.indexOf(filterClassSeparator) +
+            filterClassSeparator.length
+        );
+        found = undefined;
+        while ( (match = reFilter.exec(content)) !== null ) {
+            fargs = JSON.parse(match[0]);
+            switch ( fargs[0] ) {
+            case 0:
+            case 2:
+            case 4:
+            case 5:
+            case 7:
+                found = prefix + filter;
+                break;
+            case 1:
+            case 3:
+                if ( fargs[2] === filter ) {
+                    found = prefix + filter;
+                }
+                break;
+            case 6:
+            case 8:
+                if (
+                    fargs[2] === '' ||
+                    reHostname.test(fargs[2]) === true ||
+                    reEntity !== undefined && reEntity.test(fargs[2]) === true
+                ) {
+                    found = fargs[2] + prefix + filter;
+                }
+                break;
             }
-            if ( re.test(entry.content) === false ) {
-                continue;
+            if ( found !== undefined  ) {
+                if ( response[found] === undefined ) {
+                    response[found] = [];
+                }
+                response[found].push({
+                    title: entry.title,
+                    supportURL: entry.supportURL
+                });
+                break;
             }
-            if ( response[candidate] === undefined ) {
-                response[candidate] = [];
-            }
-            response[candidate].push({
-                title: entry.title,
-                supportURL: entry.supportURL
-            });
         }
     }
 
@@ -185,13 +195,18 @@ var fromCosmeticFilter = function(details) {
     });
 };
 
-var rePlainSelector = /^([#.][\w-]+)/;
-var reHighLow = /^[a-z]*\[(?:alt|title)="[^"]+"\]$/;
-var reHighMedium = /^\[href\^="https?:\/\/([^"]{8})[^"]*"\]$/;
+// https://github.com/gorhill/uBlock/issues/2666
+//   Raw filters in compiled filter lists may have been JSON-stringified one or
+//   multiple times.
+
+var reEscapeCosmetic = function(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            .replace(/"/g, '\\\\*"');
+};
 
 /******************************************************************************/
 
-onmessage = function(e) {
+onmessage = function(e) { // jshint ignore:line
     var msg = e.data;
 
     switch ( msg.what ) {
@@ -200,7 +215,7 @@ onmessage = function(e) {
         break;
 
     case 'setList':
-        listEntries[msg.details.path] = msg.details;
+        listEntries[msg.details.assetKey] = msg.details;
         break;
 
     case 'fromNetFilter':

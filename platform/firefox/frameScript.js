@@ -1,7 +1,7 @@
 /*******************************************************************************
 
-    µBlock - a browser extension to block requests.
-    Copyright (C) 2014 The µBlock authors
+    uBlock Origin - a browser extension to block requests.
+    Copyright (C) 2014-2016 The uBlock Origin authors
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,54 +21,42 @@
 
 /******************************************************************************/
 
-var locationChangeListener; // Keep alive while frameScript is alive
+// https://developer.mozilla.org/en-US/Firefox/Multiprocess_Firefox/Frame_script_environment
 
-(function() {
+(function(context) {
+    'use strict';
 
-'use strict';
-
-/******************************************************************************/
-
-let {contentObserver, LocationChangeListener} = Components.utils.import(
-    Components.stack.filename.replace('Script', 'Module'),
-    null
-);
-
-let injectContentScripts = function(win) {
-    if ( !win || !win.document ) {
+    if ( !context.docShell ) {
         return;
     }
 
-    contentObserver.observe(win.document);
-
-    if ( win.frames && win.frames.length ) {
-        let i = win.frames.length;
-        while ( i-- ) {
-            injectContentScripts(win.frames[i]);
-        }
+    let webProgress = context.docShell
+                      .QueryInterface(Components.interfaces.nsIInterfaceRequestor)
+                      .getInterface(Components.interfaces.nsIWebProgress);
+    if ( !webProgress ) {
+        return;
     }
-};
 
-let onLoadCompleted = function() {
-    removeMessageListener('ublock0-load-completed', onLoadCompleted);
-    injectContentScripts(content);
-};
-
-addMessageListener('ublock0-load-completed', onLoadCompleted);
-
-if ( docShell ) {
-    let Ci = Components.interfaces;
-    let wp = docShell.QueryInterface(Ci.nsIInterfaceRequestor)
-                     .getInterface(Ci.nsIWebProgress);
-    let dw = wp.DOMWindow;
-
-    if ( dw === dw.top ) {
-        locationChangeListener = new LocationChangeListener(docShell);
+    // https://github.com/gorhill/uBlock/issues/1514
+    // Fix?
+    let domWindow = webProgress.DOMWindow;
+    if ( domWindow !== domWindow.top ) {
+        return;
     }
-}
 
-/******************************************************************************/
+    let {LocationChangeListener} = Components.utils.import(
+        Components.stack.filename.replace('Script', 'Module'),
+        null
+    );
 
-})();
+    // https://github.com/gorhill/uBlock/issues/1444
+    // Apparently, on older versions of Firefox (31 and less), the same context
+    // is used for all frame scripts, hence we must use a unique variable name
+    // to ensure no collision.
+    context.ublock0LocationChangeListener = new LocationChangeListener(
+        context.docShell,
+        webProgress
+    );
+})(this);
 
 /******************************************************************************/

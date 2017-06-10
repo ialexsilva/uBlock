@@ -1,7 +1,7 @@
 /*******************************************************************************
 
-    µBlock - a browser extension to block requests.
-    Copyright (C) 2014 The µBlock authors
+    uBlock Origin - a browser extension to block requests.
+    Copyright (C) 2014-2017 The uBlock Origin authors
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,15 +19,13 @@
     Home: https://github.com/gorhill/uBlock
 */
 
-/* global self, µBlock */
-
 // For background page
+
+'use strict';
 
 /******************************************************************************/
 
 (function() {
-
-'use strict';
 
 /******************************************************************************/
 
@@ -37,6 +35,13 @@ var chrome = self.chrome;
 var manifest = chrome.runtime.getManifest();
 
 vAPI.chrome = true;
+vAPI.chromiumVersion = (function(){
+    var matches = /\bChrom(?:e|ium)\/(\d+)\b/.exec(navigator.userAgent);
+    return matches !== null ? parseInt(matches[1], 10) : NaN;
+    })();
+vAPI.cantWebsocket =
+    chrome.webRequest.ResourceType instanceof Object === false  ||
+    chrome.webRequest.ResourceType.WEBSOCKET !== 'websocket';
 
 var noopFunc = function(){};
 
@@ -54,53 +59,188 @@ vAPI.app.restart = function() {
 };
 
 /******************************************************************************/
+/******************************************************************************/
 
 // chrome.storage.local.get(null, function(bin){ console.debug('%o', bin); });
 
 vAPI.storage = chrome.storage.local;
+vAPI.cacheStorage = chrome.storage.local;
 
+/******************************************************************************/
 /******************************************************************************/
 
 // https://github.com/gorhill/uMatrix/issues/234
 // https://developer.chrome.com/extensions/privacy#property-network
 
-vAPI.browserSettings = {
-    set: function(details) {
-        for ( var setting in details ) {
-            if ( details.hasOwnProperty(setting) === false ) {
-                continue;
+// 2015-08-12: Wrapped Chrome API in try-catch statements. I had a fluke
+// event in which it appeared Chrome 46 decided to restart uBlock (for
+// unknown reasons) and again for unknown reasons the browser acted as if
+// uBlock did not declare the `privacy` permission in its manifest, putting
+// uBlock in a bad, non-functional state -- because call to `chrome.privacy`
+// API threw an exception.
+
+// https://github.com/gorhill/uBlock/issues/2048
+//   Do not mess up with existing settings if not assigning them stricter
+//   values.
+
+vAPI.browserSettings = (function() {
+    // Not all platforms support `chrome.privacy`.
+    if ( chrome.privacy instanceof Object === false ) {
+        return;
+    }
+
+    return {
+        webRTCSupported: undefined,
+
+        // https://github.com/gorhill/uBlock/issues/875
+        // Must not leave `lastError` unchecked.
+        noopCallback: function() {
+            void chrome.runtime.lastError;
+        },
+
+        // Calling with `true` means IP address leak is not prevented.
+        // https://github.com/gorhill/uBlock/issues/533
+        //   We must first check wether this Chromium-based browser was compiled
+        //   with WebRTC support. To do this, we use an iframe, this way the
+        //   empty RTCPeerConnection object we create to test for support will
+        //   be properly garbage collected. This prevents issues such as
+        //   a computer unable to enter into sleep mode, as reported in the
+        //   Chrome store:
+        // https://github.com/gorhill/uBlock/issues/533#issuecomment-167931681
+        setWebrtcIPAddress: function(setting) {
+            // We don't know yet whether this browser supports WebRTC: find out.
+            if ( this.webRTCSupported === undefined ) {
+                this.webRTCSupported = { setting: setting };
+                var iframe = document.createElement('iframe');
+                var me = this;
+                var messageHandler = function(ev) {
+                    if ( ev.origin !== self.location.origin ) {
+                        return;
+                    }
+                    window.removeEventListener('message', messageHandler);
+                    var setting = me.webRTCSupported.setting;
+                    me.webRTCSupported = ev.data === 'webRTCSupported';
+                    me.setWebrtcIPAddress(setting);
+                    iframe.parentNode.removeChild(iframe);
+                    iframe = null;
+                };
+                window.addEventListener('message', messageHandler);
+                iframe.src = 'is-webrtc-supported.html';
+                document.body.appendChild(iframe);
+                return;
             }
-            switch ( setting ) {
-            case 'prefetching':
-                chrome.privacy.network.networkPredictionEnabled.set({
-                    value: !!details[setting],
-                    scope: 'regular'
-                });
-                break;
 
-            case 'hyperlinkAuditing':
-                chrome.privacy.websites.hyperlinkAuditingEnabled.set({
-                    value: !!details[setting],
-                    scope: 'regular'
-                });
-                break;
+            // We are waiting for a response from our iframe. This makes the code
+            // safe to re-entrancy.
+            if ( typeof this.webRTCSupported === 'object' ) {
+                this.webRTCSupported.setting = setting;
+                return;
+            }
 
-            case 'webrtcIPAddress':
-                if ( typeof chrome.privacy.network.webRTCMultipleRoutesEnabled === 'object' ) {
-                    chrome.privacy.network.webRTCMultipleRoutesEnabled.set({
-                        value: !!details[setting],
-                        scope: 'regular'
-                    });
+            // https://github.com/gorhill/uBlock/issues/533
+            // WebRTC not supported: `webRTCMultipleRoutesEnabled` can NOT be
+            // safely accessed. Accessing the property will cause full browser
+            // crash.
+            if ( this.webRTCSupported !== true ) {
+                return;
+            }
+
+            var cp = chrome.privacy,
+                cpn = cp.network;
+
+            // Older version of Chromium do not support this setting, and is
+            // marked as "deprecated" since Chromium 48.
+            if ( typeof cpn.webRTCMultipleRoutesEnabled === 'object' ) {
+                try {
+                    if ( setting ) {
+                        cpn.webRTCMultipleRoutesEnabled.clear({
+                            scope: 'regular'
+                        }, this.noopCallback);
+                    } else {
+                        cpn.webRTCMultipleRoutesEnabled.set({
+                            value: false,
+                            scope: 'regular'
+                        }, this.noopCallback);
+                    }
+                } catch(ex) {
+                    console.error(ex);
                 }
-                break;
+            }
 
-            default:
-                break;
+            // This setting became available in Chromium 48.
+            if ( typeof cpn.webRTCIPHandlingPolicy === 'object' ) {
+                try {
+                    if ( setting ) {
+                        cpn.webRTCIPHandlingPolicy.clear({
+                            scope: 'regular'
+                        }, this.noopCallback);
+                    } else {
+                        // https://github.com/uBlockOrigin/uAssets/issues/333#issuecomment-289426678
+                        // - Leverage virtuous side-effect of strictest setting.
+                        cpn.webRTCIPHandlingPolicy.set({
+                            value: 'disable_non_proxied_udp',
+                            scope: 'regular'
+                        }, this.noopCallback);
+                    }
+                } catch(ex) {
+                    console.error(ex);
+                }
+            }
+        },
+
+        set: function(details) {
+            for ( var setting in details ) {
+                if ( details.hasOwnProperty(setting) === false ) {
+                    continue;
+                }
+                switch ( setting ) {
+                case 'prefetching':
+                    try {
+                        if ( !!details[setting] ) {
+                            chrome.privacy.network.networkPredictionEnabled.clear({
+                                scope: 'regular'
+                            }, this.noopCallback);
+                        } else {
+                            chrome.privacy.network.networkPredictionEnabled.set({
+                                value: false,
+                                scope: 'regular'
+                            }, this.noopCallback);
+                        }
+                    } catch(ex) {
+                        console.error(ex);
+                    }
+                    break;
+
+                case 'hyperlinkAuditing':
+                    try {
+                        if ( !!details[setting] ) {
+                            chrome.privacy.websites.hyperlinkAuditingEnabled.clear({
+                                scope: 'regular'
+                            }, this.noopCallback);
+                        } else {
+                            chrome.privacy.websites.hyperlinkAuditingEnabled.set({
+                                value: false,
+                                scope: 'regular'
+                            }, this.noopCallback);
+                        }
+                    } catch(ex) {
+                        console.error(ex);
+                    }
+                    break;
+
+                case 'webrtcIPAddress':
+                    this.setWebrtcIPAddress(!!details[setting]);
+                    break;
+
+                default:
+                    break;
+                }
             }
         }
-    }
-};
+    };
+})();
 
+/******************************************************************************/
 /******************************************************************************/
 
 vAPI.tabs = {};
@@ -129,7 +269,6 @@ var toChromiumTabId = function(tabId) {
 
 vAPI.tabs.registerListeners = function() {
     var onNavigationClient = this.onNavigation || noopFunc;
-    var onPopupClient = this.onPopup || noopFunc;
     var onUpdatedClient = this.onUpdated || noopFunc;
 
     // https://developer.chrome.com/extensions/webNavigation
@@ -139,58 +278,6 @@ vAPI.tabs.registerListeners = function() {
     //  onDOMContentLoaded ->
     //  onCompleted
 
-    var popupCandidates = Object.create(null);
-
-    var PopupCandidate = function(details) {
-        this.targetTabId = details.tabId.toString();
-        this.openerTabId = details.sourceTabId.toString();
-        this.targetURL = details.url;
-        this.selfDestructionTimer = null;
-    };
-
-    PopupCandidate.prototype.selfDestruct = function() {
-        if ( this.selfDestructionTimer !== null ) {
-            clearTimeout(this.selfDestructionTimer);
-        }
-        delete popupCandidates[this.targetTabId];
-    };
-
-    PopupCandidate.prototype.launchSelfDestruction = function() {
-        if ( this.selfDestructionTimer !== null ) {
-            clearTimeout(this.selfDestructionTimer);
-        }
-        this.selfDestructionTimer = setTimeout(this.selfDestruct.bind(this), 10000);
-    };
-
-    var popupCandidateCreate = function(details) {
-        var popup = popupCandidates[details.tabId];
-        // This really should not happen...
-        if ( popup !== undefined ) {
-            return;
-        }
-        return popupCandidates[details.tabId] = new PopupCandidate(details);
-    };
-
-    var popupCandidateTest = function(details) {
-        var popup = popupCandidates[details.tabId];
-        if ( popup === undefined ) {
-            return;
-        }
-        popup.targetURL = details.url;
-        if ( onPopupClient(popup) !== true ) {
-            return;
-        }
-        popup.selfDestruct();
-        return true;
-    };
-
-    var popupCandidateDestroy = function(details) {
-        var popup = popupCandidates[details.tabId];
-        if ( popup instanceof PopupCandidate ) {
-            popup.launchSelfDestruction();
-        }
-    };
-
     // The chrome.webRequest.onBeforeRequest() won't be called for everything
     // else than `http`/`https`. Thus, in such case, we will bind the tab as
     // early as possible in order to increase the likelihood of a context
@@ -199,46 +286,64 @@ vAPI.tabs.registerListeners = function() {
     //          http://raymondhill.net/ublock/popup.html
     var reGoodForWebRequestAPI = /^https?:\/\//;
 
+    // https://forums.lanik.us/viewtopic.php?f=62&t=32826
+    //   Chromium-based browsers: sanitize target URL. I've seen data: URI with
+    //   newline characters in standard fields, possibly as a way of evading
+    //   filters. As per spec, there should be no whitespaces in a data: URI's
+    //   standard fields.
+    var sanitizeURL = function(url) {
+        if ( url.startsWith('data:') === false ) { return url; }
+        var pos = url.indexOf(',');
+        if ( pos === -1 ) { return url; }
+        var s = url.slice(0, pos);
+        if ( s.search(/\s/) === -1 ) { return url; }
+        return s.replace(/\s+/, '') + url.slice(pos);
+    };
+
     var onCreatedNavigationTarget = function(details) {
         //console.debug('onCreatedNavigationTarget: popup candidate tab id %d = "%s"', details.tabId, details.url);
         if ( reGoodForWebRequestAPI.test(details.url) === false ) {
             details.frameId = 0;
+            details.url = sanitizeURL(details.url);
             onNavigationClient(details);
         }
-        popupCandidateCreate(details);
-        popupCandidateTest(details);
+        if ( typeof vAPI.tabs.onPopupCreated === 'function' ) {
+            vAPI.tabs.onPopupCreated(details.tabId.toString(), details.sourceTabId.toString());
+        }
     };
 
     var onBeforeNavigate = function(details) {
         if ( details.frameId !== 0 ) {
             return;
         }
-        //console.debug('onBeforeNavigate: popup candidate tab id %d = "%s"', details.tabId, details.url);
-        popupCandidateTest(details);
-    };
-
-    var onUpdated = function(tabId, changeInfo, tab) {
-        if ( changeInfo.url && popupCandidateTest({ tabId: tabId, url: changeInfo.url }) ) {
-            return;
-        }
-        onUpdatedClient(tabId, changeInfo, tab);
     };
 
     var onCommitted = function(details) {
         if ( details.frameId !== 0 ) {
             return;
         }
+        details.url = sanitizeURL(details.url);
         onNavigationClient(details);
-        //console.debug('onCommitted: popup candidate tab id %d = "%s"', details.tabId, details.url);
-        if ( popupCandidateTest(details) === true ) {
-            return;
-        }
-        popupCandidateDestroy(details);
     };
 
-    chrome.webNavigation.onCreatedNavigationTarget.addListener(onCreatedNavigationTarget);
+    var onActivated = function(details) {
+        vAPI.contextMenu.onMustUpdate(details.tabId);
+    };
+
+    var onUpdated = function(tabId, changeInfo, tab) {
+        if ( changeInfo.url ) {
+            changeInfo.url = sanitizeURL(changeInfo.url);
+        }
+        onUpdatedClient(tabId.toString(), changeInfo, tab);
+    };
+
     chrome.webNavigation.onBeforeNavigate.addListener(onBeforeNavigate);
     chrome.webNavigation.onCommitted.addListener(onCommitted);
+    // Not supported on Firefox WebExtensions yet.
+    if ( chrome.webNavigation.onCreatedNavigationTarget instanceof Object ) {
+        chrome.webNavigation.onCreatedNavigationTarget.addListener(onCreatedNavigationTarget);
+    }
+    chrome.tabs.onActivated.addListener(onActivated);
     chrome.tabs.onUpdated.addListener(onUpdated);
 
     if ( typeof this.onClosed === 'function' ) {
@@ -271,9 +376,7 @@ vAPI.tabs.get = function(tabId, callback) {
 
     var onTabReceived = function(tabs) {
         // https://code.google.com/p/chromium/issues/detail?id=410868#c8
-        if ( chrome.runtime.lastError ) {
-            /* noop */
-        }
+        void chrome.runtime.lastError;
         callback(tabs[0]);
     };
     chrome.tabs.query({ active: true, currentWindow: true }, onTabReceived);
@@ -294,6 +397,7 @@ vAPI.tabs.open = function(details) {
     if ( typeof targetURL !== 'string' || targetURL === '' ) {
         return null;
     }
+
     // extension pages
     if ( /^[\w-]{2,}:/.test(targetURL) !== true ) {
         targetURL = vAPI.getURL(targetURL);
@@ -341,11 +445,7 @@ vAPI.tabs.open = function(details) {
 
         // Open in a standalone window
         if ( details.popup === true ) {
-            chrome.windows.create({
-                url: details.url,
-                focused: details.active,
-                type: 'popup'
-            });
+            chrome.windows.create({ url: details.url, type: 'popup' });
             return;
         }
 
@@ -370,15 +470,30 @@ vAPI.tabs.open = function(details) {
         return;
     }
 
-    chrome.tabs.query({ url: targetURL }, function(tabs) {
+    // https://developer.chrome.com/extensions/tabs#method-query
+    // "Note that fragment identifiers are not matched."
+    // It's a lie, fragment identifiers ARE matched. So we need to remove the
+    // fragment.
+    var pos = targetURL.indexOf('#');
+    var targetURLWithoutHash = pos === -1 ? targetURL : targetURL.slice(0, pos);
+
+    chrome.tabs.query({ url: targetURLWithoutHash }, function(tabs) {
         var tab = tabs[0];
-        if ( tab ) {
-            chrome.tabs.update(tab.id, { active: true }, function(tab) {
-                chrome.windows.update(tab.windowId, { focused: true });
-            });
-        } else {
+        if ( !tab ) {
             wrapper();
+            return;
         }
+
+        var _details = {
+            active: true,
+            url: undefined
+        };
+        if ( targetURL !== tab.url ) {
+            _details.url = targetURL;
+        }
+        chrome.tabs.update(tab.id, _details, function(tab) {
+            chrome.windows.update(tab.windowId, { focused: true });
+        });
     });
 };
 
@@ -484,6 +599,7 @@ vAPI.tabs.injectScript = function(tabId, details, callback) {
 };
 
 /******************************************************************************/
+/******************************************************************************/
 
 // Must read: https://code.google.com/p/chromium/issues/detail?id=410868#c8
 
@@ -516,8 +632,10 @@ vAPI.setIcon = function(tabId, iconStatus, badge) {
         { '19': 'img/browsericons/icon19-off.png', '38': 'img/browsericons/icon38-off.png' };
 
     chrome.browserAction.setIcon({ tabId: tabId, path: iconPaths }, onIconReady);
+    vAPI.contextMenu.onMustUpdate(tabId);
 };
 
+/******************************************************************************/
 /******************************************************************************/
 
 vAPI.messaging = {
@@ -736,50 +854,71 @@ vAPI.messaging.broadcast = function(message) {
 };
 
 /******************************************************************************/
+/******************************************************************************/
 
 vAPI.net = {};
 
 /******************************************************************************/
 
 vAPI.net.registerListeners = function() {
-    var µb = µBlock;
-    var µburi = µb.URI;
+    var µb = µBlock,
+        µburi = µb.URI,
+        wrApi = chrome.webRequest;
 
-    var normalizeRequestDetails = function(details) {
-        µburi.set(details.url);
+    // https://bugs.chromium.org/p/chromium/issues/detail?id=410382
+    // Between Chromium 38-48, plug-ins' network requests were reported as
+    // type "other" instead of "object".
+    var is_v38_48 = /\bChrom[a-z]+\/(?:3[89]|4[0-8])\.[\d.]+\b/.test(navigator.userAgent);
 
-        details.tabId = details.tabId.toString();
-        details.hostname = µburi.hostnameFromURI(details.url);
+    // legacy Chromium understands only these network request types.
+    var validTypes = {
+        main_frame: true,
+        sub_frame: true,
+        stylesheet: true,
+        script: true,
+        image: true,
+        object: true,
+        xmlhttprequest: true,
+        other: true
+    };
+    // modern Chromium/WebExtensions: more types available.
+    if ( wrApi.ResourceType ) {
+        (function() {
+            for ( var typeKey in wrApi.ResourceType ) {
+                if ( wrApi.ResourceType.hasOwnProperty(typeKey) ) {
+                    validTypes[wrApi.ResourceType[typeKey]] = true;
+                }
+            }
+        })();
+    }
 
-        // The rest of the function code is to normalize type
-        if ( details.type !== 'other' ) {
-            return;
+    var extToTypeMap = new Map([
+        ['eot','font'],['otf','font'],['svg','font'],['ttf','font'],['woff','font'],['woff2','font'],
+        ['mp3','media'],['mp4','media'],['webm','media'],
+        ['gif','image'],['ico','image'],['jpeg','image'],['jpg','image'],['png','image'],['webp','image']
+    ]);
+
+    var denormalizeTypes = function(aa) {
+        if ( aa.length === 0 ) {
+            return Object.keys(validTypes);
         }
-
-        var tail = µburi.path.slice(-6);
-        var pos = tail.lastIndexOf('.');
-
-        // https://github.com/chrisaljoudi/uBlock/issues/862
-        // If no transposition possible, transpose to `object` as per
-        // Chromium bug 410382 (see below)
-        if ( pos === -1 ) {
-            details.type = 'object';
-            return;
+        var out = [];
+        var i = aa.length,
+            type,
+            needOther = true;
+        while ( i-- ) {
+            type = aa[i];
+            if ( validTypes[type] ) {
+                out.push(type);
+            }
+            if ( type === 'other' ) {
+                needOther = false;
+            }
         }
-
-        var ext = tail.slice(pos) + '.';
-        if ( '.eot.ttf.otf.svg.woff.woff2.'.indexOf(ext) !== -1 ) {
-            details.type = 'font';
-            return;
+        if ( needOther ) {
+            out.push('other');
         }
-        // Still need this because often behind-the-scene requests are wrongly
-        // categorized as 'other'
-        if ( '.ico.png.gif.jpg.jpeg.webp.'.indexOf(ext) !== -1 ) {
-            details.type = 'image';
-            return;
-        }
-        // https://code.google.com/p/chromium/issues/detail?id=410382
-        details.type = 'object';
+        return out;
     };
 
     var headerValue = function(headers, name) {
@@ -792,49 +931,155 @@ vAPI.net.registerListeners = function() {
         return '';
     };
 
-    var onBeforeRequestClient = this.onBeforeRequest.callback;
-    var onBeforeRequest = function(details) {
-        normalizeRequestDetails(details);
-        return onBeforeRequestClient(details);
-    };
-    chrome.webRequest.onBeforeRequest.addListener(
-        onBeforeRequest,
-        //function(details) {
-        //    quickProfiler.start('onBeforeRequest');
-        //    var r = onBeforeRequest(details);
-        //    quickProfiler.stop();
-        //    return r;
-        //},
-        {
-            'urls': this.onBeforeRequest.urls || ['<all_urls>'],
-            'types': this.onBeforeRequest.types || undefined
-        },
-        this.onBeforeRequest.extra
-    );
+    var normalizeRequestDetails = function(details) {
+        details.tabId = details.tabId.toString();
 
-    var onHeadersReceivedClient = this.onHeadersReceived.callback;
-    var onHeadersReceivedClientTypes = this.onHeadersReceived.types.slice(0);
-    var onHeadersReceivedTypes = onHeadersReceivedClientTypes.slice(0);
-    if (
-        onHeadersReceivedTypes.length !== 0 &&
-        onHeadersReceivedTypes.indexOf('other') === -1
-    ) {
-        onHeadersReceivedTypes.push('other');
-    }
-    var onHeadersReceived = function(details) {
-        normalizeRequestDetails(details);
-        // Hack to work around Chromium API limitations, where requests of
-        // type `font` are returned as `other`. For example, our normalization
-        // fail at transposing `other` into `font` for URLs which are outside
-        // what is expected. At least when headers are received we can check
-        // for content type `font/*`. Blocking at onHeadersReceived time is
-        // less worse than not blocking at all. Also, due to Chromium bug,
-        // `other` always becomes `object` when it can't be normalized into
-        // something else. Test case for "unfriendly" font URLs:
-        //   https://www.google.com/fonts
-        if ( details.type === 'object' ) {
-            if ( headerValue(details.responseHeaders, 'content-type').lastIndexOf('font/', 0) === 0 ) {
+        var type = details.type;
+
+        // https://github.com/gorhill/uBlock/issues/1493
+        // Chromium 49+/WebExtensions support a new request type: `ping`,
+        // which is fired as a result of using `navigator.sendBeacon`.
+        if ( type === 'ping' ) {
+            details.type = 'beacon';
+            return;
+        }
+
+        if ( type === 'imageset' ) {
+            details.type = 'image';
+            return;
+        }
+
+        // The rest of the function code is to normalize type
+        if ( type !== 'other' ) {
+            return;
+        }
+
+        // Try to map known "extension" part of URL to request type.
+        var path = µburi.pathFromURI(details.url),
+            pos = path.indexOf('.', path.length - 6);
+        if ( pos !== -1 && (type = extToTypeMap.get(path.slice(pos + 1))) ) {
+            details.type = type;
+            return;
+        }
+
+        // Try to extract type from response headers if present.
+        if ( details.responseHeaders ) {
+            type = headerValue(details.responseHeaders, 'content-type');
+            if ( type.startsWith('font/') ) {
                 details.type = 'font';
+                return;
+            }
+            if ( type.startsWith('image/') ) {
+                details.type = 'image';
+                return;
+            }
+            if ( type.startsWith('audio/') || type.startsWith('video/') ) {
+                details.type = 'media';
+                return;
+            }
+        }
+
+        // https://github.com/chrisaljoudi/uBlock/issues/862
+        //   If no transposition possible, transpose to `object` as per
+        //   Chromium bug 410382
+        // https://code.google.com/p/chromium/issues/detail?id=410382
+        if ( is_v38_48 ) {
+            details.type = 'object';
+        }
+    };
+
+    // https://bugs.chromium.org/p/chromium/issues/detail?id=129353
+    // https://github.com/gorhill/uBlock/issues/1497
+    // Expose websocket-based network requests to uBO's filtering engine,
+    // logger, etc.
+    // Counterpart of following block of code is found in "vapi-client.js" --
+    // search for "https://github.com/gorhill/uBlock/issues/1497".
+    //
+    // Once uBO 1.11.1 and uBO-Extra 2.12 are widespread, the image-based
+    // handling code can be removed.
+    var onBeforeWebsocketRequest = function(details) {
+        if ( (details.type !== 'image') &&
+             (details.method !== 'HEAD' || details.type !== 'xmlhttprequest')
+        ) {
+            return;
+        }
+        var requestURL = details.url,
+            matches = /[?&]u(?:rl)?=([^&]+)/.exec(requestURL);
+        if ( matches === null ) { return; }
+        details.type = 'websocket';
+        details.url = decodeURIComponent(matches[1]);
+        var r = onBeforeRequestClient(details);
+        if ( r && r.cancel ) { return r; }
+        // Redirect to the provided URL, or a 1x1 data: URI if none provided.
+        matches = /[?&]r=([^&]+)/.exec(requestURL);
+        return {
+            redirectUrl: matches !== null ?
+                decodeURIComponent(matches[1]) :
+                'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='
+        };
+    };
+
+    var onBeforeRequestClient = this.onBeforeRequest.callback;
+    var onBeforeRequest = validTypes.websocket
+        // modern Chromium/WebExtensions: type 'websocket' is supported
+        ? function(details) {
+            normalizeRequestDetails(details);
+            return onBeforeRequestClient(details);
+        }
+        // legacy Chromium
+        : function(details) {
+            // https://github.com/gorhill/uBlock/issues/1497
+            if ( details.url.endsWith('ubofix=f41665f3028c7fd10eecf573336216d3') ) {
+                var r = onBeforeWebsocketRequest(details);
+                if ( r !== undefined ) { return r; }
+            }
+            normalizeRequestDetails(details);
+            return onBeforeRequestClient(details);
+        };
+
+    // This is needed for Chromium 49-55.
+    var onBeforeSendHeaders = validTypes.csp_report
+        // modern Chromium/WebExtensions: type 'csp_report' is supported
+        ? null
+        // legacy Chromium
+        : function(details) {
+            if ( details.type !== 'ping' || details.method !== 'POST' ) { return; }
+            var type = headerValue(details.requestHeaders, 'content-type');
+            if ( type === '' ) { return; }
+            if ( type.endsWith('/csp-report') ) {
+                details.type = 'csp_report';
+                return onBeforeRequestClient(details);
+            }
+        };
+
+    var onHeadersReceivedClient = this.onHeadersReceived.callback,
+        onHeadersReceivedClientTypes = this.onHeadersReceived.types.slice(0),
+        onHeadersReceivedTypes = denormalizeTypes(onHeadersReceivedClientTypes);
+    var onHeadersReceived = validTypes.font
+        // modern Chromium/WebExtensions: type 'font' is supported
+        ? function(details) {
+            normalizeRequestDetails(details);
+            if (
+                onHeadersReceivedClientTypes.length !== 0 &&
+                onHeadersReceivedClientTypes.indexOf(details.type) === -1
+            ) {
+                return;
+            }
+            return onHeadersReceivedClient(details);
+        }
+        // legacy Chromium
+        : function(details) {
+            normalizeRequestDetails(details);
+            // Hack to work around Chromium API limitations, where requests of
+            // type `font` are returned as `other`. For example, our normalization
+            // fail at transposing `other` into `font` for URLs which are outside
+            // what is expected. At least when headers are received we can check
+            // for content type `font/*`. Blocking at onHeadersReceived time is
+            // less worse than not blocking at all. Also, due to Chromium bug,
+            // `other` always becomes `object` when it can't be normalized into
+            // something else. Test case for "unfriendly" font URLs:
+            //   https://www.google.com/fonts
+            if ( details.type === 'font' ) {
                 var r = onBeforeRequestClient(details);
                 if ( typeof r === 'object' && r.cancel === true ) {
                     return { cancel: true };
@@ -846,40 +1091,117 @@ vAPI.net.registerListeners = function() {
             ) {
                 return;
             }
+            return onHeadersReceivedClient(details);
+        };
+
+    var urls, types;
+
+    if ( onBeforeRequest ) {
+        urls = this.onBeforeRequest.urls || ['<all_urls>'];
+        types = this.onBeforeRequest.types || undefined;
+        if (
+            (validTypes.websocket) &&
+            (types === undefined || types.indexOf('websocket') !== -1) &&
+            (urls.indexOf('<all_urls>') === -1)
+        ) {
+            if ( urls.indexOf('ws://*/*') === -1 ) {
+                urls.push('ws://*/*');
+            }
+            if ( urls.indexOf('wss://*/*') === -1 ) {
+                urls.push('wss://*/*');
+            }
         }
-        return onHeadersReceivedClient(details);
-    };
-    chrome.webRequest.onHeadersReceived.addListener(
-        onHeadersReceived,
-        {
-            'urls': this.onHeadersReceived.urls || ['<all_urls>'],
-            'types': onHeadersReceivedTypes
-        },
-        this.onHeadersReceived.extra
-    );
-};
+        wrApi.onBeforeRequest.addListener(
+            onBeforeRequest,
+            { urls: urls, types: types },
+            this.onBeforeRequest.extra
+        );
+    }
 
-/******************************************************************************/
+    // Chromium 48 and lower does not support `ping` type.
+    // Chromium 56 and higher does support `csp_report` stype.
+    if ( onBeforeSendHeaders ) {
+        wrApi.onBeforeSendHeaders.addListener(
+            onBeforeSendHeaders,
+            {
+                'urls': [ '<all_urls>' ],
+                'types': [ 'ping' ]
+            },
+            [ 'blocking', 'requestHeaders' ]
+        );
+    }
 
-vAPI.contextMenu = {
-    create: function(details, callback) {
-        this.menuId = details.id;
-        this.callback = callback;
-        chrome.contextMenus.create(details);
-        chrome.contextMenus.onClicked.addListener(this.callback);
-    },
-    remove: function() {
-        chrome.contextMenus.onClicked.removeListener(this.callback);
-        chrome.contextMenus.remove(this.menuId);
+    if ( onHeadersReceived ) {
+        urls = this.onHeadersReceived.urls || ['<all_urls>'];
+        types = onHeadersReceivedTypes;
+        wrApi.onHeadersReceived.addListener(
+            onHeadersReceived,
+            { urls: urls, types: types },
+            this.onHeadersReceived.extra
+        );
     }
 };
 
+/******************************************************************************/
+/******************************************************************************/
+
+vAPI.contextMenu = {
+    _callback: null,
+    _entries: [],
+    _createEntry: function(entry) {
+        chrome.contextMenus.create(JSON.parse(JSON.stringify(entry)), function() {
+            void chrome.runtime.lastError;
+        });
+    },
+    onMustUpdate: function() {},
+    setEntries: function(entries, callback) {
+        entries = entries || [];
+        var n = Math.max(this._entries.length, entries.length),
+            oldEntryId, newEntry;
+        for ( var i = 0; i < n; i++ ) {
+            oldEntryId = this._entries[i];
+            newEntry = entries[i];
+            if ( oldEntryId && newEntry ) {
+                if ( newEntry.id !== oldEntryId ) {
+                    chrome.contextMenus.remove(oldEntryId);
+                    this._createEntry(newEntry);
+                    this._entries[i] = newEntry.id;
+                }
+            } else if ( oldEntryId && !newEntry ) {
+                chrome.contextMenus.remove(oldEntryId);
+            } else if ( !oldEntryId && newEntry ) {
+                this._createEntry(newEntry);
+                this._entries[i] = newEntry.id;
+            }
+        }
+        n = this._entries.length = entries.length;
+        callback = callback || null;
+        if ( callback === this._callback ) {
+            return;
+        }
+        if ( n !== 0 && callback !== null ) {
+            chrome.contextMenus.onClicked.addListener(callback);
+            this._callback = callback;
+        } else if ( n === 0 && this._callback !== null ) {
+            chrome.contextMenus.onClicked.removeListener(this._callback);
+            this._callback = null;
+        }
+    }
+};
+
+/******************************************************************************/
+/******************************************************************************/
+
+vAPI.commands = chrome.commands;
+
+/******************************************************************************/
 /******************************************************************************/
 
 vAPI.lastError = function() {
     return chrome.runtime.lastError;
 };
 
+/******************************************************************************/
 /******************************************************************************/
 
 // This is called only once, when everything has been loaded in memory after
@@ -894,16 +1216,6 @@ vAPI.onLoadAllCompleted = function() {
     var scriptDone = function() {
         vAPI.lastError();
     };
-    var scriptEnd = function(tabId) {
-        if ( vAPI.lastError() ) {
-            return;
-        }
-        vAPI.tabs.injectScript(tabId, {
-            file: 'js/contentscript-end.js',
-            allFrames: true,
-            runAt: 'document_idle'
-        }, scriptDone);
-    };
     var scriptStart = function(tabId) {
         vAPI.tabs.injectScript(tabId, {
             file: 'js/vapi-client.js',
@@ -911,10 +1223,10 @@ vAPI.onLoadAllCompleted = function() {
             runAt: 'document_idle'
         }, function(){ });
         vAPI.tabs.injectScript(tabId, {
-            file: 'js/contentscript-start.js',
+            file: 'js/contentscript.js',
             allFrames: true,
             runAt: 'document_idle'
-        }, function(){ scriptEnd(tabId); });
+        }, scriptDone);
     };
     var bindToTabs = function(tabs) {
         var µb = µBlock;
@@ -924,13 +1236,16 @@ vAPI.onLoadAllCompleted = function() {
             µb.tabContextManager.commit(tab.id, tab.url);
             µb.bindTabToPageStats(tab.id);
             // https://github.com/chrisaljoudi/uBlock/issues/129
-            scriptStart(tab.id);
+            if ( /^https?:\/\//.test(tab.url) ) {
+                scriptStart(tab.id);
+            }
         }
     };
 
     chrome.tabs.query({ url: '<all_urls>' }, bindToTabs);
 };
 
+/******************************************************************************/
 /******************************************************************************/
 
 vAPI.punycodeHostname = function(hostname) {
@@ -941,6 +1256,228 @@ vAPI.punycodeURL = function(url) {
     return url;
 };
 
+/******************************************************************************/
+/******************************************************************************/
+
+// https://github.com/gorhill/uBlock/issues/531
+// Storage area dedicated to admin settings. Read-only.
+
+// https://github.com/gorhill/uBlock/commit/43a5ed735b95a575a9339b6e71a1fcb27a99663b#commitcomment-13965030
+// Not all Chromium-based browsers support managed storage. Merely testing or
+// exception handling in this case does NOT work: I don't know why. The
+// extension on Opera ends up in a non-sensical state, whereas vAPI become
+// undefined out of nowhere. So only solution left is to test explicitly for
+// Opera.
+// https://github.com/gorhill/uBlock/issues/900
+// Also, UC Browser: http://www.upsieutoc.com/image/WXuH
+
+vAPI.adminStorage = {
+    getItem: function(key, callback) {
+        var onRead = function(store) {
+            var data;
+            if (
+                !chrome.runtime.lastError &&
+                typeof store === 'object' &&
+                store !== null
+            ) {
+                data = store[key];
+            }
+            callback(data);
+        };
+        try {
+            chrome.storage.managed.get(key, onRead);
+        } catch (ex) {
+            callback();
+        }
+    }
+};
+
+/******************************************************************************/
+/******************************************************************************/
+
+vAPI.cloud = (function() {
+    // Not all platforms support `chrome.storage.sync`.
+    if ( chrome.storage.sync instanceof Object === false ) {
+        return;
+    }
+
+    var chunkCountPerFetch = 16; // Must be a power of 2
+
+    // Mind chrome.storage.sync.MAX_ITEMS (512 at time of writing)
+    var maxChunkCountPerItem = Math.floor(512 * 0.75) & ~(chunkCountPerFetch - 1);
+
+    // Mind chrome.storage.sync.QUOTA_BYTES_PER_ITEM (8192 at time of writing)
+    var maxChunkSize = Math.floor(chrome.storage.sync.QUOTA_BYTES_PER_ITEM * 0.75 || 6144);
+
+    // Mind chrome.storage.sync.QUOTA_BYTES (128 kB at time of writing)
+    // Firefox:
+    // https://developer.mozilla.org/en-US/Add-ons/WebExtensions/API/storage/sync
+    // > You can store up to 100KB of data using this API/
+    var maxStorageSize = chrome.storage.sync.QUOTA_BYTES || 102400;
+
+    var options = {
+        defaultDeviceName: window.navigator.platform,
+        deviceName: window.localStorage.getItem('deviceName') || ''
+    };
+
+    // This is used to find out a rough count of how many chunks exists:
+    // We "poll" at specific index in order to get a rough idea of how
+    // large is the stored string.
+    // This allows reading a single item with only 2 sync operations -- a
+    // good thing given chrome.storage.sync.MAX_WRITE_OPERATIONS_PER_MINUTE
+    // and chrome.storage.sync.MAX_WRITE_OPERATIONS_PER_HOUR.
+
+    var getCoarseChunkCount = function(dataKey, callback) {
+        var bin = {};
+        for ( var i = 0; i < maxChunkCountPerItem; i += 16 ) {
+            bin[dataKey + i.toString()] = '';
+        }
+
+        chrome.storage.sync.get(bin, function(bin) {
+            if ( chrome.runtime.lastError ) {
+                callback(0, chrome.runtime.lastError.message);
+                return;
+            }
+
+            var chunkCount = 0;
+            for ( var i = 0; i < maxChunkCountPerItem; i += 16 ) {
+                if ( bin[dataKey + i.toString()] === '' ) {
+                    break;
+                }
+                chunkCount = i + 16;
+            }
+
+            callback(chunkCount);
+        });
+    };
+
+    var deleteChunks = function(dataKey, start) {
+        var keys = [];
+
+        // No point in deleting more than:
+        // - The max number of chunks per item
+        // - The max number of chunks per storage limit
+        var n = Math.min(
+            maxChunkCountPerItem,
+            Math.ceil(maxStorageSize / maxChunkSize)
+        );
+        for ( var i = start; i < n; i++ ) {
+            keys.push(dataKey + i.toString());
+        }
+        chrome.storage.sync.remove(keys);
+    };
+
+    var start = function(/* dataKeys */) {
+    };
+
+    var push = function(dataKey, data, callback) {
+        var bin = {
+            'source': options.deviceName || options.defaultDeviceName,
+            'tstamp': Date.now(),
+            'data': data,
+            'size': 0
+        };
+        bin.size = JSON.stringify(bin).length;
+        var item = JSON.stringify(bin);
+
+        // Chunkify taking into account QUOTA_BYTES_PER_ITEM:
+        //   https://developer.chrome.com/extensions/storage#property-sync
+        //   "The maximum size (in bytes) of each individual item in sync
+        //   "storage, as measured by the JSON stringification of its value
+        //   "plus its key length."
+        bin = {};
+        var chunkCount = Math.ceil(item.length / maxChunkSize);
+        for ( var i = 0; i < chunkCount; i++ ) {
+            bin[dataKey + i.toString()] = item.substr(i * maxChunkSize, maxChunkSize);
+        }
+        bin[dataKey + i.toString()] = ''; // Sentinel
+
+        chrome.storage.sync.set(bin, function() {
+            var errorStr;
+            if ( chrome.runtime.lastError ) {
+                errorStr = chrome.runtime.lastError.message;
+            }
+            callback(errorStr);
+
+            // Remove potentially unused trailing chunks
+            deleteChunks(dataKey, chunkCount);
+        });
+    };
+
+    var pull = function(dataKey, callback) {
+        var assembleChunks = function(bin) {
+            if ( chrome.runtime.lastError ) {
+                callback(null, chrome.runtime.lastError.message);
+                return;
+            }
+
+            // Assemble chunks into a single string.
+            var json = [], jsonSlice;
+            var i = 0;
+            for (;;) {
+                jsonSlice = bin[dataKey + i.toString()];
+                if ( jsonSlice === '' ) {
+                    break;
+                }
+                json.push(jsonSlice);
+                i += 1;
+            }
+
+            var entry = null;
+            try {
+                entry = JSON.parse(json.join(''));
+            } catch(ex) {
+            }
+            callback(entry);
+        };
+
+        var fetchChunks = function(coarseCount, errorStr) {
+            if ( coarseCount === 0 || typeof errorStr === 'string' ) {
+                callback(null, errorStr);
+                return;
+            }
+
+            var bin = {};
+            for ( var i = 0; i < coarseCount; i++ ) {
+                bin[dataKey + i.toString()] = '';
+            }
+
+            chrome.storage.sync.get(bin, assembleChunks);
+        };
+
+        getCoarseChunkCount(dataKey, fetchChunks);
+    };
+
+    var getOptions = function(callback) {
+        if ( typeof callback !== 'function' ) {
+            return;
+        }
+        callback(options);
+    };
+
+    var setOptions = function(details, callback) {
+        if ( typeof details !== 'object' || details === null ) {
+            return;
+        }
+
+        if ( typeof details.deviceName === 'string' ) {
+            window.localStorage.setItem('deviceName', details.deviceName);
+            options.deviceName = details.deviceName;
+        }
+
+        getOptions(callback);
+    };
+
+    return {
+        start: start,
+        push: push,
+        pull: pull,
+        getOptions: getOptions,
+        setOptions: setOptions
+    };
+})();
+
+/******************************************************************************/
 /******************************************************************************/
 
 })();

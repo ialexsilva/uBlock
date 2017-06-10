@@ -1,7 +1,7 @@
 /*******************************************************************************
 
-    µBlock - a browser extension to block requests.
-    Copyright (C) 2014 The µBlock authors
+    uBlock Origin - a browser extension to block requests.
+    Copyright (C) 2014-2107 The uBlock Origin authors
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,15 +20,15 @@
 */
 
 /* jshint esnext: true, bitwise: false */
-/* global self, Components, punycode, µBlock */
+/* global punycode */
 
 // For background page
+
+'use strict';
 
 /******************************************************************************/
 
 (function() {
-
-'use strict';
 
 /******************************************************************************/
 
@@ -40,6 +40,38 @@ const {Services} = Cu.import('resource://gre/modules/Services.jsm', null);
 var vAPI = self.vAPI = self.vAPI || {};
 vAPI.firefox = true;
 vAPI.fennec = Services.appinfo.ID === '{aa3c5121-dab2-40e2-81ca-7ea25febc110}';
+vAPI.thunderbird = Services.appinfo.ID === '{3550f703-e582-4d05-9a08-453d09bdfdc6}';
+
+if ( vAPI.fennec ) {
+    vAPI.battery = true;
+}
+
+/******************************************************************************/
+
+var deferUntil = function(testFn, mainFn, details) {
+    if ( typeof details !== 'object' ) {
+        details = {};
+    }
+
+    var now = 0,
+        next = details.next || 200,
+        until = details.until || 12800;
+
+    var check = function() {
+        if ( testFn() === true || now >= until ) {
+            mainFn();
+            return;
+        }
+        now += next;
+        vAPI.setTimeout(check, next);
+    };
+
+    if ( 'sync' in details && details.sync === true ) {
+        check();
+    } else {
+        vAPI.setTimeout(check, details.first || 1);
+    }
+};
 
 /******************************************************************************/
 
@@ -70,15 +102,17 @@ vAPI.localStorage.setDefaultBool('forceLegacyToolbarButton', false);
 var cleanupTasks = [];
 
 // This must be updated manually, every time a new task is added/removed
-var expectedNumberOfCleanups = 7;
+var expectedNumberOfCleanups = 9;
 
 window.addEventListener('unload', function() {
     if ( typeof vAPI.app.onShutdown === 'function' ) {
         vAPI.app.onShutdown();
     }
 
-    for ( var cleanup of cleanupTasks ) {
-        cleanup();
+    // IMPORTANT: cleanup tasks must be executed using LIFO order.
+    var i = cleanupTasks.length;
+    while ( i-- ) {
+        cleanupTasks[i]();
     }
 
     if ( cleanupTasks.length < expectedNumberOfCleanups ) {
@@ -90,10 +124,18 @@ window.addEventListener('unload', function() {
     }
 
     // frameModule needs to be cleared too
+    var frameModuleURL = vAPI.getURL('frameModule.js');
     var frameModule = {};
-    Cu.import(vAPI.getURL('frameModule.js'), frameModule);
-    frameModule.contentObserver.unregister();
-    Cu.unload(vAPI.getURL('frameModule.js'));
+
+    // https://github.com/gorhill/uBlock/issues/1004
+    // For whatever reason, `Cu.import` can throw -- at least this was
+    // reported as happening for Pale Moon 25.8.
+    try {
+        Cu.import(frameModuleURL, frameModule);
+        frameModule.contentObserver.unregister();
+        Cu.unload(frameModuleURL);
+    } catch (ex) {
+    }
 });
 
 /******************************************************************************/
@@ -103,105 +145,152 @@ window.addEventListener('unload', function() {
 vAPI.browserSettings = {
     originalValues: {},
 
-    rememberOriginalValue: function(branch, setting) {
-        var key = branch + '.' + setting;
+    rememberOriginalValue: function(path, setting) {
+        var key = path + '.' + setting;
         if ( this.originalValues.hasOwnProperty(key) ) {
             return;
         }
-        var hasUserValue = false;
+        var hasUserValue;
+        var branch = Services.prefs.getBranch(path + '.');
         try {
-            hasUserValue = Services.prefs.getBranch(branch + '.').prefHasUserValue(setting);
+            hasUserValue = branch.prefHasUserValue(setting);
         } catch (ex) {
         }
-        this.originalValues[key] = hasUserValue ? this.getBool(branch, setting) : undefined;
+        if ( hasUserValue !== undefined ) {
+            this.originalValues[key] = hasUserValue ? this.getValue(path, setting) : undefined;
+        }
     },
 
-    clear: function(branch, setting) {
-        var key = branch + '.' + setting;
+    clear: function(path, setting) {
+        var key = path + '.' + setting;
+
         // Value was not overriden -- nothing to restore
         if ( this.originalValues.hasOwnProperty(key) === false ) {
             return;
         }
+
         var value = this.originalValues[key];
         // https://github.com/gorhill/uBlock/issues/292#issuecomment-109621979
         // Forget the value immediately, it may change outside of
         // uBlock control.
         delete this.originalValues[key];
+
         // Original value was a default one
         if ( value === undefined ) {
             try {
-                Services.prefs.getBranch(branch + '.').clearUserPref(setting);
+                Services.prefs.getBranch(path + '.').clearUserPref(setting);
             } catch (ex) {
             }
             return;
         }
-        // Current value is same as original
-        if ( this.getBool(branch, setting) === value ) {
+
+        // Reset to original value
+        this.setValue(path, setting, value);
+    },
+
+    getValue: function(path, setting) {
+        var branch = Services.prefs.getBranch(path + '.');
+        var getMethod;
+
+        // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/nsIPrefBranch#getPrefType%28%29
+        switch ( branch.getPrefType(setting) ) {
+        case  64: // PREF_INT
+            getMethod = 'getIntPref';
+            break;
+        case 128: // PREF_BOOL
+            getMethod = 'getBoolPref';
+            break;
+        default:  // not supported
             return;
         }
-        // Reset to original value
+
         try {
-            Services.prefs.getBranch(branch + '.').setBoolPref(setting, value);
+            return branch[getMethod](setting);
         } catch (ex) {
         }
     },
 
-    getBool: function(branch, setting) {
-        try {
-            return Services.prefs.getBranch(branch + '.').getBoolPref(setting);
-        } catch (ex) {
+    setValue: function(path, setting, value) {
+        var setMethod;
+        switch ( typeof value ) {
+        case  'number':
+            setMethod = 'setIntPref';
+            break;
+        case 'boolean':
+            setMethod = 'setBoolPref';
+            break;
+        default:  // not supported
+            return;
         }
-        return undefined;
-    },
 
-    setBool: function(branch, setting, value) {
         try {
-            Services.prefs.getBranch(branch + '.').setBoolPref(setting, value);
+            Services.prefs.getBranch(path + '.')[setMethod](setting, value);
         } catch (ex) {
         }
     },
 
     set: function(details) {
-        var value;
+        var settingVal;
+        var prefName, prefVal;
         for ( var setting in details ) {
             if ( details.hasOwnProperty(setting) === false ) {
                 continue;
             }
+            settingVal = !!details[setting];
             switch ( setting ) {
             case 'prefetching':
                 this.rememberOriginalValue('network', 'prefetch-next');
-                value = !!details[setting];
+                // http://betanews.com/2015/08/15/firefox-stealthily-loads-webpages-when-you-hover-over-links-heres-how-to-stop-it/
+                // https://bugzilla.mozilla.org/show_bug.cgi?id=814169
+                // Sigh.
+                this.rememberOriginalValue('network.http', 'speculative-parallel-limit');
+                this.rememberOriginalValue('network.dns', 'disablePrefetch');
                 // https://github.com/gorhill/uBlock/issues/292
                 // "true" means "do not disable", i.e. leave entry alone
-                if ( value === true ) {
+                if ( settingVal ) {
                     this.clear('network', 'prefetch-next');
+                    this.clear('network.http', 'speculative-parallel-limit');
+                    this.clear('network.dns', 'disablePrefetch');
                 } else {
-                    this.setBool('network', 'prefetch-next', false);
+                    this.setValue('network', 'prefetch-next', false);
+                    this.setValue('network.http', 'speculative-parallel-limit', 0);
+                    this.setValue('network.dns', 'disablePrefetch', true);
                 }
                 break;
 
             case 'hyperlinkAuditing':
                 this.rememberOriginalValue('browser', 'send_pings');
-                this.rememberOriginalValue('beacon', 'enabled');
-                value = !!details[setting];
                 // https://github.com/gorhill/uBlock/issues/292
                 // "true" means "do not disable", i.e. leave entry alone
-                if ( value === true ) {
+                if ( settingVal ) {
                     this.clear('browser', 'send_pings');
-                    this.clear('beacon', 'enabled');
                 } else {
-                    this.setBool('browser', 'send_pings', false);
-                    this.setBool('beacon', 'enabled', false);
+                    this.setValue('browser', 'send_pings', false);
                 }
                 break;
 
+            // https://github.com/gorhill/uBlock/issues/894
+            // Do not disable completely WebRTC if it can be avoided. FF42+
+            // has a `media.peerconnection.ice.default_address_only` pref which
+            // purpose is to prevent local IP address leakage.
             case 'webrtcIPAddress':
-                this.rememberOriginalValue('media.peerconnection', 'enabled');
-                value = !!details[setting];
-                if ( value === true ) {
-                    this.clear('media.peerconnection', 'enabled');
+                // https://github.com/gorhill/uBlock/issues/2337
+                if ( this.getValue('media.peerconnection', 'ice.no_host') !== undefined ) {
+                    prefName = 'ice.no_host';
+                    prefVal = true;
+                } else if ( this.getValue('media.peerconnection', 'ice.default_address_only') !== undefined ) {
+                    prefName = 'ice.default_address_only';
+                    prefVal = true;
                 } else {
-                    this.setBool('media.peerconnection', 'enabled', false);
+                    prefName = 'enabled';
+                    prefVal = false;
+                }
+
+                this.rememberOriginalValue('media.peerconnection', prefName);
+                if ( settingVal ) {
+                    this.clear('media.peerconnection', prefName);
+                } else {
+                    this.setValue('media.peerconnection', prefName, prefVal);
                 }
                 break;
 
@@ -233,8 +322,9 @@ cleanupTasks.push(vAPI.browserSettings.restoreAll.bind(vAPI.browserSettings));
 vAPI.storage = (function() {
     var db = null;
     var vacuumTimer = null;
+    var dbOpenError = '';
 
-    var close = function() {
+    var close = function(now) {
         if ( vacuumTimer !== null ) {
             clearTimeout(vacuumTimer);
             vacuumTimer = null;
@@ -242,7 +332,11 @@ vAPI.storage = (function() {
         if ( db === null ) {
             return;
         }
-        db.asyncClose();
+        if ( now ) {
+            db.close();
+        } else {
+            db.asyncClose();
+        }
         db = null;
     };
 
@@ -262,7 +356,10 @@ vAPI.storage = (function() {
         }
         path.append(location.host + '.sqlite');
 
-        // Open database
+        // Open database.
+        // https://github.com/gorhill/uBlock/issues/1768
+        // If the SQL file is found to be corrupted at launch time, nuke
+        // existing SQL file so that a new one can be created.
         try {
             db = Services.storage.openDatabase(path);
             if ( db.connectionReady === false ) {
@@ -270,11 +367,22 @@ vAPI.storage = (function() {
                 db = null;
             }
         } catch (ex) {
+            if ( dbOpenError === '' ) {
+                console.error('vAPI.storage/open() error: ', ex.message);
+                dbOpenError = ex.name;
+                if ( ex.name === 'NS_ERROR_FILE_CORRUPTED' ) {
+                    nuke();
+                }
+            }
         }
 
         if ( db === null ) {
             return null;
         }
+
+        // Since database could be opened successfully, reset error flag (its
+        // purpose is to avoid spamming console with error messages).
+        dbOpenError = '';
 
         // Database was opened, register cleanup task
         cleanupTasks.push(close);
@@ -288,6 +396,22 @@ vAPI.storage = (function() {
         }
 
         return db;
+    };
+
+    var nuke = function() {
+        var removeDB = function() {
+            close(true);
+            var path = Services.dirsvc.get('ProfD', Ci.nsIFile);
+            path.append('extension-data');
+            if ( !path.exists() || !path.isDirectory() ) {
+                return;
+            }
+            path.append(location.host + '.sqlite');
+            if ( path.exists() ) {
+                path.remove(false);
+            }
+        };
+        vAPI.setTimeout(removeDB, 1);
     };
 
     // https://developer.mozilla.org/en-US/docs/Storage/Performance#Vacuuming_and_zero-fill
@@ -319,7 +443,7 @@ vAPI.storage = (function() {
 
                 var row;
 
-                while ( row = rows.getNextRow() ) {
+                while ( (row = rows.getNextRow()) ) {
                     // we assume that there will be two columns, since we're
                     // using it only for preferences
                     result[row.getResultByIndex(0)] = row.getResultByIndex(1);
@@ -329,12 +453,22 @@ vAPI.storage = (function() {
                 if ( typeof callback === 'function' && reason === 0 ) {
                     callback(result);
                 }
+                result = null;
             },
             handleError: function(error) {
                 console.error('SQLite error ', error.result, error.message);
                 // Caller expects an answer regardless of failure.
                 if ( typeof callback === 'function' ) {
-                    callback(null);
+                    callback({});
+                }
+                result = null;
+                // https://github.com/gorhill/uBlock/issues/1768
+                // Error cases which warrant a removal of the SQL file, so far:
+                // - SQLLite error 11 database disk image is malformed
+                // Can't find doc on MDN about the type of error.result, so I
+                // force a string comparison.
+                if ( error.result.toString() === '11' ) {
+                    nuke();
                 }
             }
         });
@@ -383,7 +517,7 @@ vAPI.storage = (function() {
         }
 
         runStatement(stmt, function(result) {
-            callback(result.size);
+            callback(result.size || 0);
         });
     };
 
@@ -488,11 +622,188 @@ vAPI.storage = (function() {
     return api;
 })();
 
+vAPI.cacheStorage = vAPI.storage;
+
 /******************************************************************************/
 
-var getTabBrowser = function(win) {
-    return vAPI.fennec && win.BrowserApp || win.gBrowser || null;
-};
+// This must be executed/setup early.
+
+var winWatcher = (function() {
+    var windowToIdMap = new Map();
+    var windowIdGenerator = 1;
+    var api = {
+        onOpenWindow: null,
+        onCloseWindow: null
+    };
+
+    // https://github.com/gorhill/uMatrix/issues/586
+    // This is necessary hack because on SeaMonkey 2.40, for unknown reasons
+    // private windows do not have the attribute `windowtype` set to
+    // `navigator:browser`. As a fallback, the code here will also test whether
+    // the id attribute is `main-window`.
+    api.toBrowserWindow = function(win) {
+        var docElement = win && win.document && win.document.documentElement;
+        if ( !docElement ) {
+            return null;
+        }
+        if ( vAPI.thunderbird ) {
+            return docElement.getAttribute('windowtype') === 'mail:3pane' ? win : null;
+        }
+        return docElement.getAttribute('windowtype') === 'navigator:browser' ||
+               docElement.getAttribute('id') === 'main-window' ?
+               win : null;
+    };
+
+    api.getWindows = function() {
+        return windowToIdMap.keys();
+    };
+
+    api.idFromWindow = function(win) {
+        return windowToIdMap.get(win) || 0;
+    };
+
+    api.getCurrentWindow = function() {
+        return this.toBrowserWindow(Services.wm.getMostRecentWindow(null));
+    };
+
+    var addWindow = function(win) {
+        if ( !win || windowToIdMap.has(win) ) {
+            return;
+        }
+        windowToIdMap.set(win, windowIdGenerator++);
+        if ( typeof api.onOpenWindow === 'function' ) {
+            api.onOpenWindow(win);
+        }
+    };
+
+    var removeWindow = function(win) {
+        if ( !win || windowToIdMap.delete(win) !== true ) {
+            return;
+        }
+        if ( typeof api.onCloseWindow === 'function' ) {
+            api.onCloseWindow(win);
+        }
+    };
+
+    // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/nsIWindowMediator
+    // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/nsIWindowWatcher
+    // https://github.com/gorhill/uMatrix/issues/357
+    // Use nsIWindowMediator for being notified of opened/closed windows.
+    var listeners = {
+        onOpenWindow: function(aWindow) {
+            var win;
+            try {
+                win = aWindow.QueryInterface(Ci.nsIInterfaceRequestor)
+                             .getInterface(Ci.nsIDOMWindow);
+            } catch (ex) {
+            }
+            addWindow(win);
+        },
+
+        onCloseWindow: function(aWindow) {
+            var win;
+            try {
+                win = aWindow.QueryInterface(Ci.nsIInterfaceRequestor)
+                             .getInterface(Ci.nsIDOMWindow);
+            } catch (ex) {
+            }
+            removeWindow(win);
+        },
+
+        observe: function(aSubject, topic) {
+            // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/nsIWindowWatcher#registerNotification%28%29
+            //   "aSubject - the window being opened or closed, sent as an
+            //   "nsISupports which can be ... QueryInterfaced to an
+            //   "nsIDOMWindow."
+            var win;
+            try {
+                win = aSubject.QueryInterface(Ci.nsIInterfaceRequestor)
+                              .getInterface(Ci.nsIDOMWindow);
+            } catch (ex) {
+            }
+            if ( !win ) { return; }
+            if ( topic === 'domwindowopened' ) {
+                addWindow(win);
+                return;
+            }
+            if ( topic === 'domwindowclosed' ) {
+                removeWindow(win);
+                return;
+            }
+        }
+    };
+
+    (function() {
+        var winumerator, win;
+
+        // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/nsIWindowMediator#getEnumerator%28%29
+        winumerator = Services.wm.getEnumerator(null);
+        while ( winumerator.hasMoreElements() ) {
+            win = winumerator.getNext();
+            if ( !win.closed ) {
+                windowToIdMap.set(win, windowIdGenerator++);
+            }
+        }
+
+        // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/nsIWindowWatcher#getWindowEnumerator%28%29
+        winumerator = Services.ww.getWindowEnumerator();
+        while ( winumerator.hasMoreElements() ) {
+            win = winumerator.getNext()
+                             .QueryInterface(Ci.nsIInterfaceRequestor)
+                             .getInterface(Ci.nsIDOMWindow);
+            if ( !win.closed ) {
+                windowToIdMap.set(win, windowIdGenerator++);
+            }
+        }
+
+        Services.wm.addListener(listeners);
+        Services.ww.registerNotification(listeners);
+    })();
+
+    cleanupTasks.push(function() {
+        Services.wm.removeListener(listeners);
+        Services.ww.unregisterNotification(listeners);
+        windowToIdMap.clear();
+    });
+
+    return api;
+})();
+
+/******************************************************************************/
+
+var getTabBrowser = (function() {
+    if ( vAPI.fennec ) {
+        return function(win) {
+            return win.BrowserApp || null;
+        };
+    }
+
+    if ( vAPI.thunderbird ) {
+        return function(win) {
+            return win.document.getElementById('tabmail') || null;
+        };
+    }
+
+    // https://github.com/gorhill/uBlock/issues/1004
+    //   Merely READING the `gBrowser` property causes the issue -- no
+    //   need to even use its returned value... This really should be fixed
+    //   in the browser.
+    //   Meanwhile, the workaround is to check whether the document is
+    //   ready. This is hacky, as the code below has to make assumption
+    //   about the browser's inner working -- specifically that the `gBrowser`
+    //   property should NOT be accessed before the document of the window is
+    //   in its ready state.
+
+    return function(win) {
+        if ( win ) {
+            var doc = win.document;
+            if ( doc && doc.readyState === 'complete' ) {
+                return win.gBrowser || null;
+            }
+        }
+        return null;
+    };
+})();
 
 /******************************************************************************/
 
@@ -502,7 +813,7 @@ var getOwnerWindow = function(target) {
     }
 
     // Fennec
-    for ( var win of vAPI.tabs.getWindows() ) {
+    for ( var win of winWatcher.getWindows() ) {
         for ( var tab of win.BrowserApp.tabs) {
             if ( tab === target || tab.window === target ) {
                 return win;
@@ -578,20 +889,23 @@ vAPI.tabs.get = function(tabId, callback) {
         return browser;
     }
 
-    if ( !browser ) {
+    if ( !browser || !browser.currentURI ) {
         callback();
         return;
     }
 
     var win = getOwnerWindow(browser);
     var tabBrowser = getTabBrowser(win);
-    var windows = this.getWindows();
+
+    // https://github.com/gorhill/uMatrix/issues/540
+    // The `index` property is nowhere used by uBlock at this point, so we
+    // will refrain from returning this information for the time being.
 
     callback({
         id: tabId,
-        index: tabWatcher.indexFromTarget(browser),
-        windowId: windows.indexOf(win),
-        active: browser === tabBrowser.selectedBrowser,
+        index: undefined,
+        windowId: winWatcher.idFromWindow(win),
+        active: tabBrowser !== null && browser === tabBrowser.selectedBrowser,
         url: browser.currentURI.asciiSpec,
         title: browser.contentTitle
     });
@@ -603,7 +917,7 @@ vAPI.tabs.getAll = function(window) {
     var win, tab;
     var tabs = [];
 
-    for ( win of this.getWindows() ) {
+    for ( win of winWatcher.getWindows() ) {
         if ( window && window !== win ) {
             continue;
         }
@@ -613,29 +927,19 @@ vAPI.tabs.getAll = function(window) {
             continue;
         }
 
+        // This can happens if a tab-less window is currently opened.
+        // Example of a tab-less window: one opened from clicking
+        //   "View Page Source".
+        if ( !tabBrowser.tabs ) {
+            continue;
+        }
+
         for ( tab of tabBrowser.tabs ) {
             tabs.push(tab);
         }
     }
 
     return tabs;
-};
-
-/******************************************************************************/
-
-vAPI.tabs.getWindows = function() {
-    var winumerator = Services.wm.getEnumerator('navigator:browser');
-    var windows = [];
-
-    while ( winumerator.hasMoreElements() ) {
-        var win = winumerator.getNext();
-
-        if ( !win.closed ) {
-            windows.push(win);
-        }
-    }
-
-    return windows;
 };
 
 /******************************************************************************/
@@ -663,6 +967,8 @@ vAPI.tabs.open = function(details) {
 
         for ( tab of this.getAll() ) {
             var browser = tabWatcher.browserFromTarget(tab);
+            // https://github.com/gorhill/uBlock/issues/2558
+            if ( browser === null ) { continue; }
 
             // Or simply .equals if we care about the fragment
             if ( URI.equalsExceptRef(browser.currentURI) === false ) {
@@ -670,6 +976,11 @@ vAPI.tabs.open = function(details) {
             }
 
             this.select(tab);
+
+            // Update URL if fragment is different
+            if ( URI.equals(browser.currentURI) === false ) {
+                browser.loadURI(URI.asciiSpec);
+            }
             return;
         }
     }
@@ -686,11 +997,17 @@ vAPI.tabs.open = function(details) {
         }
     }
 
-    var win = Services.wm.getMostRecentWindow('navigator:browser');
+    var win = winWatcher.getCurrentWindow();
     var tabBrowser = getTabBrowser(win);
+    if ( tabBrowser === null ) {
+        return;
+    }
 
     if ( vAPI.fennec ) {
-        tabBrowser.addTab(details.url, {selected: details.active !== false});
+        tabBrowser.addTab(details.url, {
+            selected: details.active !== false,
+            parentId: tabBrowser.selectedTab.id
+        });
         // Note that it's impossible to move tabs on Fennec, so don't bother
         return;
     }
@@ -698,12 +1015,21 @@ vAPI.tabs.open = function(details) {
     // Open in a standalone window
     if ( details.popup === true ) {
         Services.ww.openWindow(
-            self,
+            win,
             details.url,
-            null,
-            'menubar=no,toolbar=no,location=no,resizable=yes',
+            'uBO-logger',
+            'location=1,menubar=1,personalbar=1,resizable=1,toolbar=1',
             null
         );
+        return;
+    }
+
+    if ( vAPI.thunderbird ) {
+        tabBrowser.openTab('contentTab', {
+            contentPage: details.url,
+            background: !details.active
+        });
+        // TODO: Should be possible to move tabs on Thunderbird
         return;
     }
 
@@ -738,27 +1064,51 @@ vAPI.tabs.replace = function(tabId, url) {
 
 /******************************************************************************/
 
-vAPI.tabs._remove = function(tab, tabBrowser) {
-    if ( vAPI.fennec ) {
-        tabBrowser.closeTab(tab);
-        return;
+vAPI.tabs._remove = (function() {
+    if ( vAPI.fennec || vAPI.thunderbird ) {
+        return function(tab, tabBrowser) {
+            tabBrowser.closeTab(tab);
+        };
     }
-    tabBrowser.removeTab(tab);
-};
+    return function(tab, tabBrowser) {
+        if ( !tabBrowser ) { return; }
+        tabBrowser.removeTab(tab);
+    };
+})();
 
 /******************************************************************************/
 
-vAPI.tabs.remove = function(tabId) {
-    var browser = tabWatcher.browserFromTabId(tabId);
-    if ( !browser ) {
-        return;
-    }
-    var tab = tabWatcher.tabFromBrowser(browser);
-    if ( !tab ) {
-        return;
-    }
-    this._remove(tab, getTabBrowser(getOwnerWindow(browser)));
-};
+// https://bugzilla.mozilla.org/show_bug.cgi?id=1317173
+//   Work around FF45 (and earlier) timing issue by delaying the closing
+//   of tabs. The picked delay is just what seemed to work for the test case
+//   reported in the issue above.
+
+vAPI.tabs.remove = (function() {
+    var timer = null,
+        queue = [];
+
+    var remove = function() {
+        timer = null;
+        var tabId, browser, tab;
+        while ( (tabId = queue.pop()) ) {
+            browser = tabWatcher.browserFromTabId(tabId);
+            if ( !browser ) { continue; }
+            tab = tabWatcher.tabFromBrowser(browser);
+            if ( !tab ) { continue; }
+            this._remove(tab, getTabBrowser(getOwnerWindow(browser)));
+        }
+    };
+
+    // Do this asynchronously
+    return function(tabId, delay) {
+        queue.push(tabId);
+        if ( timer !== null ) {
+            if ( !delay ) { return; }
+            clearTimeout(timer);
+        }
+        timer = vAPI.setTimeout(remove.bind(this), delay ? 250 : 25);
+    };
+})();
 
 /******************************************************************************/
 
@@ -781,11 +1131,14 @@ vAPI.tabs.select = function(tab) {
         return;
     }
 
-    // https://github.com/gorhill/uBlock/issues/470
     var win = getOwnerWindow(tab);
-    win.focus();
-
     var tabBrowser = getTabBrowser(win);
+    if ( tabBrowser === null ) {
+        return;
+    }
+
+    // https://github.com/gorhill/uBlock/issues/470
+    win.focus();
 
     if ( vAPI.fennec ) {
         tabBrowser.selectTab(tab);
@@ -827,18 +1180,26 @@ vAPI.tabs.injectScript = function(tabId, details, callback) {
 /******************************************************************************/
 
 var tabWatcher = (function() {
-    // TODO: find out whether we need a janitor to take care of stale entries.
-    var browserToTabIdMap = new Map();
+    // https://github.com/gorhill/uMatrix/issues/540
+    // Use only weak references to hold onto browser references.
+    var browserToTabIdMap = new WeakMap();
     var tabIdToBrowserMap = new Map();
     var tabIdGenerator = 1;
 
     var indexFromBrowser = function(browser) {
+        if ( !browser ) {
+            return -1;
+        }
+        // TODO: Add support for this
+        if ( vAPI.thunderbird ) {
+            return -1;
+        }
         var win = getOwnerWindow(browser);
         if ( !win ) {
             return -1;
         }
         var tabbrowser = getTabBrowser(win);
-        if ( !tabbrowser ) {
+        if ( tabbrowser === null ) {
             return -1;
         }
         // This can happen, for example, the `view-source:` window, there is
@@ -869,7 +1230,7 @@ var tabWatcher = (function() {
             return null;
         }
         var tabbrowser = getTabBrowser(win);
-        if ( !tabbrowser ) {
+        if ( tabbrowser === null ) {
             return null;
         }
         if ( !tabbrowser.tabs || i >= tabbrowser.tabs.length ) {
@@ -878,22 +1239,36 @@ var tabWatcher = (function() {
         return tabbrowser.tabs[i];
     };
 
-    var browserFromTarget = function(target) {
-        if ( !target ) {
-            return null;
-        }
+    var browserFromTarget = (function() {
         if ( vAPI.fennec ) {
-            if ( target.browser ) {         // target is a tab
-                target = target.browser;
+            return function(target) {
+                if ( !target ) { return null; }
+                if ( target.browser ) {     // target is a tab
+                    target = target.browser;
+                }
+                return target.localName === 'browser' ? target : null;
+            };
+        }
+        if ( vAPI.thunderbird ) {
+            return function(target) {
+                if ( !target ) { return null; }
+                if ( target.mode ) {        // target is object with tab info
+                    var browserFunc = target.mode.getBrowser || target.mode.tabType.getBrowser;
+                    if ( browserFunc ) {
+                        return browserFunc.call(target.mode.tabType, target);
+                    }
+                }
+                return target.localName === 'browser' ? target : null;
+            };
+        }
+        return function(target) {
+            if ( !target ) { return null; }
+            if ( target.linkedPanel ) {     // target is a tab
+                target = target.linkedBrowser;
             }
-        } else if ( target.linkedPanel ) {  // target is a tab
-            target = target.linkedBrowser;
-        }
-        if ( target.localName !== 'browser' ) {
-            return null;
-        }
-        return target;
-    };
+            return target.localName === 'browser' ? target : null;
+        };
+    })();
 
     var tabIdFromTarget = function(target) {
         var browser = browserFromTarget(target);
@@ -904,31 +1279,30 @@ var tabWatcher = (function() {
         if ( tabId === undefined ) {
             tabId = '' + tabIdGenerator++;
             browserToTabIdMap.set(browser, tabId);
-            tabIdToBrowserMap.set(tabId, browser);
+            tabIdToBrowserMap.set(tabId, Cu.getWeakReference(browser));
         }
         return tabId;
     };
 
     var browserFromTabId = function(tabId) {
-        var browser = tabIdToBrowserMap.get(tabId);
-        if ( browser === undefined ) {
-            return null;
-        }
-        // Verify that the browser is still live
-        if ( indexFromBrowser(browser) !== -1 ) {
-            return browser;
-        }
-        removeBrowserEntry(tabId, browser);
-        return null;
+        var weakref = tabIdToBrowserMap.get(tabId);
+        return weakref && weakref.get() || null;
     };
 
     var currentBrowser = function() {
-        var win = Services.wm.getMostRecentWindow('navigator:browser');
+        var win = winWatcher.getCurrentWindow();
         // https://github.com/gorhill/uBlock/issues/399
         // getTabBrowser() can return null at browser launch time.
         var tabBrowser = getTabBrowser(win);
         if ( tabBrowser === null ) {
             return null;
+        }
+        if ( vAPI.thunderbird ) {
+            // Directly at startup the first tab may not be initialized
+            if ( tabBrowser.tabInfo.length === 0 ) {
+                return null;
+            }
+            return tabBrowser.getBrowserForSelectedTab() || null;
         }
         return browserFromTarget(tabBrowser.selectedTab);
     };
@@ -944,15 +1318,21 @@ var tabWatcher = (function() {
         }
     };
 
-    // https://developer.mozilla.org/en-US/docs/Web/Events/TabOpen
-    var onOpen = function({target}) {
-        var tabId = tabIdFromTarget(target);
-        var browser = browserFromTabId(tabId);
-        vAPI.tabs.onNavigation({
-            frameId: 0,
-            tabId: tabId,
-            url: browser.currentURI.asciiSpec,
-        });
+    var removeTarget = function(target) {
+        onClose({ target: target });
+    };
+
+    var getAllBrowsers = function() {
+        var browsers = [], browser;
+        for ( var weakref of tabIdToBrowserMap.values() ) {
+            browser = weakref.get();
+            // TODO:
+            // Maybe call removeBrowserEntry() if the browser no longer exists?
+            if ( browser ) {
+                browsers.push(browser);
+            }
+        }
+        return browsers;
     };
 
     // https://developer.mozilla.org/en-US/docs/Web/Events/TabShow
@@ -974,9 +1354,13 @@ var tabWatcher = (function() {
     };
 
     var attachToTabBrowser = function(window) {
+        if ( typeof vAPI.toolbarButton.attachToNewWindow === 'function' ) {
+            vAPI.toolbarButton.attachToNewWindow(window);
+        }
+
         var tabBrowser = getTabBrowser(window);
-        if ( !tabBrowser ) {
-            return false;
+        if ( tabBrowser === null ) {
+            return;
         }
 
         var tabContainer;
@@ -984,76 +1368,93 @@ var tabWatcher = (function() {
             tabContainer = tabBrowser.deck;
         } else if ( tabBrowser.tabContainer ) {     // Firefox
             tabContainer = tabBrowser.tabContainer;
-            vAPI.contextMenu.register(window.document);
-        } else {
-            return true;
+            vAPI.contextMenu.register(window);
+            vAPI.commands.register(window);
         }
 
-        if ( typeof vAPI.toolbarButton.attachToNewWindow === 'function' ) {
-            vAPI.toolbarButton.attachToNewWindow(window);
+        // https://github.com/gorhill/uBlock/issues/697
+        // Ignore `TabShow` events: unfortunately the `pending` attribute is
+        // not set when a tab is opened as a result of session restore -- it is
+        // set *after* the event is fired in such case.
+        if ( tabContainer ) {
+            tabContainer.addEventListener('TabShow', onShow);
+            tabContainer.addEventListener('TabClose', onClose);
+            // when new window is opened TabSelect doesn't run on the selected tab?
+            tabContainer.addEventListener('TabSelect', onSelect);
         }
-
-        tabContainer.addEventListener('TabOpen', onOpen);
-        tabContainer.addEventListener('TabShow', onShow);
-        tabContainer.addEventListener('TabClose', onClose);
-        // when new window is opened TabSelect doesn't run on the selected tab?
-        tabContainer.addEventListener('TabSelect', onSelect);
-
-        return true;
     };
 
-    var onWindowLoad = function(ev) {
-        if ( ev ) {
-            this.removeEventListener(ev.type, onWindowLoad);
-        }
-
-        var wintype = this.document.documentElement.getAttribute('windowtype');
-        if ( wintype !== 'navigator:browser' ) {
-            return;
+    // https://github.com/gorhill/uBlock/issues/906
+    // Ensure the environment is ready before trying to attaching.
+    var canAttachToTabBrowser = function(window) {
+        var document = window && window.document;
+        if ( !document || document.readyState !== 'complete' ) {
+            return false;
         }
 
         // On some platforms, the tab browser isn't immediately available,
         // try waiting a bit if this happens.
-        var win = this;
-        if ( attachToTabBrowser(win) === false ) {
-            vAPI.setTimeout(attachToTabBrowser.bind(null, win), 250);
+        // https://github.com/gorhill/uBlock/issues/763
+        // Not getting a tab browser should not prevent from attaching ourself
+        // to the window.
+        var tabBrowser = getTabBrowser(window);
+        if ( tabBrowser === null ) {
+            return false;
         }
+
+        return winWatcher.toBrowserWindow(window) !== null;
     };
 
-    var onWindowUnload = function() {
-        vAPI.contextMenu.unregister(this.document);
-        this.removeEventListener('DOMContentLoaded', onWindowLoad);
+    var onWindowLoad = function(win) {
+        deferUntil(
+            canAttachToTabBrowser.bind(null, win),
+            attachToTabBrowser.bind(null, win)
+        );
+    };
 
-        var tabBrowser = getTabBrowser(this);
-        if ( !tabBrowser ) {
+    var onWindowUnload = function(win) {
+        vAPI.contextMenu.unregister(win);
+        vAPI.commands.unregister(win);
+
+        var tabBrowser = getTabBrowser(win);
+        if ( tabBrowser === null ) {
             return;
         }
 
-        var tabContainer = null;
+        var tabContainer;
         if ( tabBrowser.deck ) {                    // Fennec
             tabContainer = tabBrowser.deck;
         } else if ( tabBrowser.tabContainer ) {     // Firefox
             tabContainer = tabBrowser.tabContainer;
         }
         if ( tabContainer ) {
-            tabContainer.removeEventListener('TabOpen', onOpen);
             tabContainer.removeEventListener('TabShow', onShow);
             tabContainer.removeEventListener('TabClose', onClose);
             tabContainer.removeEventListener('TabSelect', onSelect);
         }
 
-        var browser, URI, tabId;
-        for ( var tab of tabBrowser.tabs ) {
-            browser = tabWatcher.browserFromTarget(tab);
+        // https://github.com/gorhill/uBlock/issues/574
+        // To keep in mind: not all windows are tab containers,
+        // sometimes the window IS the tab.
+        var tabs;
+        if ( vAPI.thunderbird ) {
+            tabs = tabBrowser.tabInfo;
+        } else if ( tabBrowser.tabs ) {
+            tabs = tabBrowser.tabs;
+        } else if ( tabBrowser.localName === 'browser' ) {
+            tabs = [tabBrowser];
+        } else {
+            tabs = [];
+        }
+
+        var browser, tabId;
+        var tabindex = tabs.length, tab;
+        while ( tabindex-- ) {
+            tab = tabs[tabindex];
+            browser = browserFromTarget(tab);
             if ( browser === null ) {
                 continue;
             }
-            URI = browser.currentURI;
-            // Close extension tabs
-            if ( URI.schemeIs('chrome') && URI.host === location.host ) {
-                vAPI.tabs._remove(tab, getTabBrowser(this));
-            }
-            browser = browserFromTarget(tab);
             tabId = browserToTabIdMap.get(browser);
             if ( tabId !== undefined ) {
                 removeBrowserEntry(tabId, browser);
@@ -1063,58 +1464,51 @@ var tabWatcher = (function() {
         }
     };
 
-    // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/nsIWindowWatcher
-    var windowWatcher = {
-        observe: function(win, topic) {
-            if ( topic === 'domwindowopened' ) {
-                win.addEventListener('DOMContentLoaded', onWindowLoad);
-                return;
-            }
-            if ( topic === 'domwindowclosed' ) {
-                onWindowUnload.call(win);
-                return;
-            }
-        }
-    };
-
     // Initialize map with existing active tabs
     var start = function() {
-        var tabBrowser, tab;
-        for ( var win of vAPI.tabs.getWindows() ) {
-            onWindowLoad.call(win);
+        var tabBrowser, tabs, tab;
+        for ( var win of winWatcher.getWindows() ) {
+            onWindowLoad(win);
             tabBrowser = getTabBrowser(win);
             if ( tabBrowser === null ) {
                 continue;
             }
-            for ( tab of tabBrowser.tabs ) {
+            // `tabBrowser.tabs` may not exist (Thunderbird).
+            tabs = tabBrowser.tabs;
+            if ( !tabs ) {
+                continue;
+            }
+            for ( tab of tabs ) {
                 if ( vAPI.fennec || !tab.hasAttribute('pending') ) {
                     tabIdFromTarget(tab);
                 }
             }
         }
 
-        Services.ww.registerNotification(windowWatcher);
+        winWatcher.onOpenWindow = onWindowLoad;
+        winWatcher.onCloseWindow = onWindowUnload;
     };
 
     var stop = function() {
-        Services.ww.unregisterNotification(windowWatcher);
+        winWatcher.onOpenWindow = null;
+        winWatcher.onCloseWindow = null;
 
-        for ( var win of vAPI.tabs.getWindows() ) {
-            onWindowUnload.call(win);
+        for ( var win of winWatcher.getWindows() ) {
+            onWindowUnload(win);
         }
-
-        browserToTabIdMap.clear();
+        browserToTabIdMap = new WeakMap();
         tabIdToBrowserMap.clear();
     };
 
     cleanupTasks.push(stop);
 
     return {
-        browsers: function() { return browserToTabIdMap.keys(); },
+        browsers: getAllBrowsers,
         browserFromTabId: browserFromTabId,
         browserFromTarget: browserFromTarget,
         currentBrowser: currentBrowser,
         indexFromTarget: indexFromTarget,
+        removeTarget: removeTarget,
         start: start,
         tabFromBrowser: tabFromBrowser,
         tabIdFromTarget: tabIdFromTarget
@@ -1127,8 +1521,12 @@ vAPI.setIcon = function(tabId, iconStatus, badge) {
     // If badge is undefined, then setIcon was called from the TabSelect event
     var win = badge === undefined
         ? iconStatus
-        : Services.wm.getMostRecentWindow('navigator:browser');
-    var curTabId = tabWatcher.tabIdFromTarget(getTabBrowser(win).selectedTab);
+        : winWatcher.getCurrentWindow();
+    var curTabId;
+    var tabBrowser = getTabBrowser(win);
+    if ( tabBrowser !== null ) {
+        curTabId = tabWatcher.tabIdFromTarget(tabBrowser.selectedTab);
+    }
     var tb = vAPI.toolbarButton;
 
     // from 'TabSelect' event
@@ -1138,8 +1536,9 @@ vAPI.setIcon = function(tabId, iconStatus, badge) {
         tb.tabs[tabId] = { badge: badge, img: iconStatus === 'on' };
     }
 
-    if ( tabId === curTabId ) {
+    if ( curTabId && tabId === curTabId ) {
         tb.updateState(win, tabId);
+        vAPI.contextMenu.onMustUpdate(tabId);
     }
 };
 
@@ -1150,7 +1549,7 @@ vAPI.messaging = {
         return Cc['@mozilla.org/globalmessagemanager;1']
                 .getService(Ci.nsIMessageListenerManager);
     },
-    frameScript: vAPI.getURL('frameScript.js'),
+    frameScriptURL: vAPI.getURL('frameScript.js'),
     listeners: {},
     defaultHandler: null,
     NOOPFUNC: function(){},
@@ -1375,16 +1774,15 @@ vAPI.messaging.setup = function(defaultHandler) {
     }
     this.defaultHandler = defaultHandler;
 
-    this.globalMessageManager.addMessageListener(
+    var gmm = this.globalMessageManager;
+    gmm.addMessageListener(
         location.host + ':background',
         this.onMessage
     );
-
-    this.globalMessageManager.loadFrameScript(this.frameScript, true);
+    gmm.loadFrameScript(this.frameScriptURL, true);
 
     cleanupTasks.push(function() {
         var gmm = vAPI.messaging.globalMessageManager;
-
         gmm.broadcastAsyncMessage(
             location.host + ':broadcast',
             JSON.stringify({
@@ -1393,13 +1791,11 @@ vAPI.messaging.setup = function(defaultHandler) {
                 msg: { cmd: 'shutdownSandbox' }
             })
         );
-
-        gmm.removeDelayedFrameScript(vAPI.messaging.frameScript);
+        gmm.removeDelayedFrameScript(vAPI.messaging.frameScriptURL);
         gmm.removeMessageListener(
             location.host + ':background',
             vAPI.messaging.onMessage
         );
-
         vAPI.messaging.defaultHandler = null;
     });
 };
@@ -1414,6 +1810,78 @@ vAPI.messaging.broadcast = function(message) {
 };
 
 /******************************************************************************/
+/******************************************************************************/
+
+// Synchronous messaging: Firefox allows this. Chromium does not allow this.
+
+// Sometimes there is no way around synchronous messaging, as long as:
+// - the code at the other end execute fast and return quickly.
+// - it's not abused.
+// Original rationale is <https://github.com/gorhill/uBlock/issues/756>.
+// Synchronous messaging is a good solution for this case because:
+// - It's done only *once* per page load. (Keep in mind there is already a
+//   sync message sent for each single network request on a page and it's not
+//   an issue, because the code executed is trivial, which is the key -- see
+//   shouldLoadListener below).
+// - The code at the other end is fast.
+// Though vAPI.rpcReceiver was brought forth because of this one case, I
+// generalized the concept for whatever future need for synchronous messaging
+// which might arise.
+
+// https://developer.mozilla.org/en-US/Firefox/Multiprocess_Firefox/Message_Manager/Message_manager_overview#Content_frame_message_manager
+
+vAPI.rpcReceiver = (function() {
+    var calls = Object.create(null),
+        childProcessMessageName = location.host + ':child-process-message',
+        processScriptURL = vAPI.getURL('processScript.js');
+
+    var onChildProcessMessage = function(ev) {
+        var msg = ev.data;
+        if ( !msg ) { return; }
+        var fn = calls[msg.fnName];
+        if ( typeof fn === 'function' ) {
+            return fn(msg);
+        }
+    };
+
+    var ppmm = Services.ppmm;
+    if ( !ppmm ) {
+        ppmm = Cc['@mozilla.org/parentprocessmessagemanager;1'];
+        if ( ppmm ) {
+            ppmm = ppmm.getService(Ci.nsIMessageListenerManager);
+        }
+        if ( !ppmm ) {
+            return calls;
+        }
+    }
+
+    // https://github.com/gorhill/uBlock/issues/2014
+    // Not supported on older versions of Firefox.
+    if ( ppmm.loadProcessScript instanceof Function ) {
+        ppmm.loadProcessScript(processScriptURL, true);
+    }
+
+    ppmm.addMessageListener(
+        childProcessMessageName,
+        onChildProcessMessage
+    );
+
+    cleanupTasks.push(function() {
+        if ( ppmm.removeDelayedProcessScript instanceof Function ) {
+            ppmm.removeDelayedProcessScript(processScriptURL);
+        }
+
+        ppmm.removeMessageListener(
+            childProcessMessageName,
+            onChildProcessMessage
+        );
+    });
+
+    return calls;
+})();
+
+/******************************************************************************/
+/******************************************************************************/
 
 var httpObserver = {
     classDescription: 'net-channel-event-sinks for ' + location.host,
@@ -1424,9 +1892,6 @@ var httpObserver = {
     ACCEPT: Components.results.NS_SUCCEEDED,
     // Request types:
     // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/nsIContentPolicy#Constants
-    MAIN_FRAME: Ci.nsIContentPolicy.TYPE_DOCUMENT,
-    VALID_CSP_TARGETS: 1 << Ci.nsIContentPolicy.TYPE_DOCUMENT |
-                       1 << Ci.nsIContentPolicy.TYPE_SUBDOCUMENT,
     typeMap: {
         1: 'other',
         2: 'script',
@@ -1441,9 +1906,15 @@ var httpObserver = {
         14: 'font',
         15: 'media',
         16: 'websocket',
+        17: 'csp_report',
         19: 'beacon',
+        20: 'xmlhttprequest',
         21: 'image'
     },
+    onBeforeRequest: function(){},
+    onBeforeRequestTypes: null,
+    onHeadersReceived: function(){},
+    onHeadersReceivedTypes: null,
 
     get componentRegistrar() {
         return Components.manager.QueryInterface(Ci.nsIComponentRegistrar);
@@ -1476,7 +1947,7 @@ var httpObserver = {
     register: function() {
         this.pendingRingBufferInit();
 
-        Services.obs.addObserver(this, 'http-on-opening-request', true);
+        Services.obs.addObserver(this, 'http-on-modify-request', true);
         Services.obs.addObserver(this, 'http-on-examine-response', true);
 
         // Guard against stale instances not having been unregistered
@@ -1504,7 +1975,7 @@ var httpObserver = {
     },
 
     unregister: function() {
-        Services.obs.removeObserver(this, 'http-on-opening-request');
+        Services.obs.removeObserver(this, 'http-on-modify-request');
         Services.obs.removeObserver(this, 'http-on-examine-response');
 
         this.componentRegistrar.unregisterFactory(this.classID, this);
@@ -1519,7 +1990,6 @@ var httpObserver = {
         this.frameId = 0;
         this.parentFrameId = 0;
         this.rawtype = 0;
-        this.sourceTabId = null;
         this.tabId = 0;
         this._key = ''; // key is url, from URI.spec
     },
@@ -1529,7 +1999,7 @@ var httpObserver = {
     // the ring buffer are overwritten.
     pendingURLToIndex: new Map(),
     pendingWritePointer: 0,
-    pendingRingBuffer: new Array(32),
+    pendingRingBuffer: new Array(256),
     pendingRingBufferInit: function() {
         // Use and reuse pre-allocated PendingRequest objects = less memory
         // churning.
@@ -1539,103 +2009,216 @@ var httpObserver = {
         }
     },
 
+    // Pending request ring buffer:
+    // +-------+-------+-------+-------+-------+-------+-------
+    // |0      |1      |2      |3      |4      |5      |...      
+    // +-------+-------+-------+-------+-------+-------+-------
+    //
+    // URL to ring buffer index map:
+    // { k = URL, s = ring buffer indices }
+    //
+    // s is a string which character codes map to ring buffer indices -- for
+    // when the same URL is received multiple times by shouldLoadListener()
+    // before the existing one is serviced by the network request observer.
+    // I believe the use of a string in lieu of an array reduces memory
+    // churning.
+
     createPendingRequest: function(url) {
         var bucket;
         var i = this.pendingWritePointer;
-        this.pendingWritePointer = i + 1 & 31;
+        this.pendingWritePointer = i + 1 & 255;
         var preq = this.pendingRingBuffer[i];
+        var si = String.fromCharCode(i);
         // Cleanup unserviced pending request
         if ( preq._key !== '' ) {
             bucket = this.pendingURLToIndex.get(preq._key);
-            if ( Array.isArray(bucket) ) {
-                // Assuming i in array
-                var pos = bucket.indexOf(i);
-                bucket.splice(pos, 1);
-                if ( bucket.length === 1 ) {
-                    this.pendingURLToIndex.set(preq._key, bucket[0]);
-                }
-            } else if ( typeof bucket === 'number' ) {
-                // Assuming bucket === i
+            if ( bucket.length === 1 ) {
                 this.pendingURLToIndex.delete(preq._key);
+            } else {
+                var pos = bucket.indexOf(si);
+                this.pendingURLToIndex.set(preq._key, bucket.slice(0, pos) + bucket.slice(pos + 1));
             }
         }
-        // Would be much simpler if a url could not appear more than once.
         bucket = this.pendingURLToIndex.get(url);
-        if ( bucket === undefined ) {
-            this.pendingURLToIndex.set(url, i);
-        } else if ( Array.isArray(bucket) ) {
-            bucket = bucket.push(i);
-        } else {
-            bucket = [bucket, i];
-        }
+        this.pendingURLToIndex.set(url, bucket === undefined ? si : si + bucket);
         preq._key = url;
         return preq;
     },
 
     lookupPendingRequest: function(url) {
-        var i = this.pendingURLToIndex.get(url);
-        if ( i === undefined ) {
+        var bucket = this.pendingURLToIndex.get(url);
+        if ( bucket === undefined ) {
             return null;
         }
-        if ( Array.isArray(i) ) {
-            var bucket = i;
-            i = bucket.shift();
-            if ( bucket.length === 1 ) {
-                this.pendingURLToIndex.set(url, bucket[0]);
-            }
-        } else {
+        var i = bucket.charCodeAt(0);
+        if ( bucket.length === 1 ) {
             this.pendingURLToIndex.delete(url);
+        } else {
+            this.pendingURLToIndex.set(url, bucket.slice(1));
         }
         var preq = this.pendingRingBuffer[i];
         preq._key = ''; // mark as "serviced"
         return preq;
     },
 
-    handlePopup: function(URI, tabId, sourceTabId) {
-        if ( !sourceTabId ) {
-            return false;
+    // https://github.com/gorhill/uMatrix/issues/165
+    // https://developer.mozilla.org/en-US/Firefox/Releases/3.5/Updating_extensions#Getting_a_load_context_from_a_request
+    // Not sure `umatrix:shouldLoad` is still needed, uMatrix does not
+    //   care about embedded frames topography.
+    // Also:
+    //   https://developer.mozilla.org/en-US/Firefox/Multiprocess_Firefox/Limitations_of_chrome_scripts
+    tabIdFromChannel: function(channel) {
+        var lc;
+        try {
+            lc = channel.notificationCallbacks.getInterface(Ci.nsILoadContext);
+        } catch(ex) {
         }
-
-        if ( !URI.schemeIs('http') && !URI.schemeIs('https') ) {
-            return false;
+        if ( !lc ) {
+            try {
+                lc = channel.loadGroup.notificationCallbacks.getInterface(Ci.nsILoadContext);
+            } catch(ex) {
+            }
+            if ( !lc ) {
+                return vAPI.noTabId;
+            }
         }
-
-        var result = vAPI.tabs.onPopup({
-            targetTabId: tabId,
-            openerTabId: sourceTabId,
-            targetURL: URI.asciiSpec
-        });
-
-        return result === true;
+        if ( lc.topFrameElement ) {
+            return tabWatcher.tabIdFromTarget(lc.topFrameElement);
+        }
+        var win;
+        try {
+            win = lc.associatedWindow;
+        } catch (ex) { }
+        if ( !win ) {
+            return vAPI.noTabId;
+        }
+        if ( win.top ) {
+            win = win.top;
+        }
+        var tabBrowser;
+        try {
+            tabBrowser = getTabBrowser(
+                win.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIWebNavigation)
+                   .QueryInterface(Ci.nsIDocShell).rootTreeItem
+                   .QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindow)
+            );
+        } catch (ex) { }
+        if ( !tabBrowser ) {
+            return vAPI.noTabId;
+        }
+        if ( tabBrowser.getBrowserForContentWindow ) {
+            return tabWatcher.tabIdFromTarget(tabBrowser.getBrowserForContentWindow(win));
+        }
+        // Falling back onto _getTabForContentWindow to ensure older versions
+        // of Firefox work well.
+        return tabBrowser._getTabForContentWindow ?
+               tabWatcher.tabIdFromTarget(tabBrowser._getTabForContentWindow(win)) :
+               vAPI.noTabId;
     },
 
-    handleRequest: function(channel, URI, details) {
-        var onBeforeRequest = vAPI.net.onBeforeRequest;
-        var type = this.typeMap[details.rawtype] || 'other';
+    // https://github.com/gorhill/uBlock/issues/959
+    syntheticPendingRequest: { frameId: 0, parentFrameId: -1, tabId: '', rawtype: 1 },
 
-        if ( onBeforeRequest.types && onBeforeRequest.types.has(type) === false ) {
+    handleRequest: function(channel, URI, details) {
+        var type = this.typeMap[details.rawtype] || 'other';
+        if ( this.onBeforeRequestTypes && this.onBeforeRequestTypes.has(type) === false ) {
             return false;
         }
 
-        var result = onBeforeRequest.callback({
+        // https://github.com/uBlockOrigin/uAssets/issues/123#issuecomment-244055243
+        // Need special handling for websocket requests: http-based websocket
+        // requests will be evaluated as ws-based websocket requests.
+        if ( details.rawtype === 16 && URI.asciiSpec.startsWith('http') ) {
+            URI = Services.io.newURI(URI.asciiSpec.replace(/^http(s)?:/, 'ws$1:'), null, null);
+        }
+
+        var result = this.onBeforeRequest({
             frameId: details.frameId,
-            hostname: URI.asciiHost,
             parentFrameId: details.parentFrameId,
             tabId: details.tabId,
             type: type,
             url: URI.asciiSpec
         });
 
-        if ( !result || typeof result !== 'object' ) {
-            return false;
-        }
-
-        if ( result.cancel === true ) {
-            channel.cancel(this.ABORT);
-            return true;
+        if ( result && typeof result === 'object' ) {
+            if ( 'cancel' in result && result.cancel === true ) {
+                channel.cancel(this.ABORT);
+                return true;
+            }
+            if ( 'redirectUrl' in result ) {
+                channel.redirectionLimit = 1;
+                channel.redirectTo(Services.io.newURI(result.redirectUrl, null, null));
+                return true;
+            }
         }
 
         return false;
+    },
+
+    getResponseHeader: function(channel, name) {
+        var value;
+        try {
+            value = channel.getResponseHeader(name);
+        } catch (ex) {
+        }
+        return value;
+    },
+
+    handleResponseHeaders: function(channel, URI, channelData) {
+        var requestType = this.typeMap[channelData[3]] || 'other';
+        if ( this.onHeadersReceivedTypes && this.onHeadersReceivedTypes.has(requestType) === false ) {
+            return;
+        }
+
+        // 'Content-Security-Policy' MUST come last in the array. Need to
+        // revised this eventually.
+        var responseHeaders = [],
+            value = channel.contentLength;
+        if ( value !== -1 ) {
+            responseHeaders.push({ name: 'Content-Length', value: value });
+        }
+        if ( requestType.endsWith('_frame') ) {
+            value = this.getResponseHeader(channel, 'Content-Security-Policy');
+            if ( value !== undefined ) {
+                responseHeaders.push({ name: 'Content-Security-Policy', value: value });
+            }
+        }
+
+        var result = this.onHeadersReceived({
+            parentFrameId: channelData[1],
+            responseHeaders: responseHeaders,
+            tabId: channelData[2],
+            type: requestType,
+            url: URI.asciiSpec
+        });
+
+        if ( !result ) {
+            return;
+        }
+
+        if ( result.cancel ) {
+            channel.cancel(this.ABORT);
+            return;
+        }
+
+        if ( result.responseHeaders && result.responseHeaders.length ) {
+            channel.setResponseHeader(
+                'Content-Security-Policy',
+                result.responseHeaders.pop().value,
+                true
+            );
+            return;
+        }
+    },
+
+    channelDataFromChannel: function(channel) {
+        if ( channel instanceof Ci.nsIWritablePropertyBag ) {
+            try {
+                return channel.getProperty(this.REQDATAKEY) || null;
+            } catch (ex) {
+            }
+        }
+        return null;
     },
 
     observe: function(channel, topic) {
@@ -1644,74 +2227,80 @@ var httpObserver = {
         }
 
         var URI = channel.URI;
-        var channelData, result;
+        var channelData = this.channelDataFromChannel(channel);
 
         if ( topic === 'http-on-examine-response' ) {
-            if ( !(channel instanceof Ci.nsIWritablePropertyBag) ) {
-                return;
+            if ( channelData !== null ) {
+                this.handleResponseHeaders(channel, URI, channelData);
             }
-
-            try {
-                channelData = channel.getProperty(this.REQDATAKEY);
-            } catch (ex) {
-                return;
-            }
-
-            if ( !channelData ) {
-                return;
-            }
-
-            if ( (1 << channelData[4] & this.VALID_CSP_TARGETS) === 0 ) {
-                return;
-            }
-
-            topic = 'Content-Security-Policy';
-
-            try {
-                result = channel.getResponseHeader(topic);
-            } catch (ex) {
-                result = null;
-            }
-
-            result = vAPI.net.onHeadersReceived.callback({
-                hostname: URI.asciiHost,
-                parentFrameId: channelData[1],
-                responseHeaders: result ? [{name: topic, value: result}] : [],
-                tabId: channelData[3],
-                type: this.typeMap[channelData[4]] || 'other',
-                url: URI.asciiSpec
-            });
-
-            if ( result ) {
-                channel.setResponseHeader(
-                    topic,
-                    result.responseHeaders.pop().value,
-                    true
-                );
-            }
-
             return;
         }
 
-        // http-on-opening-request
+        // http-on-modify-request
 
-        //console.log('http-on-opening-request:', URI.spec);
+        // The channel was previously serviced.
+        if ( channelData !== null ) {
+            this.handleRequest(channel, URI, {
+                frameId: channelData[0],
+                parentFrameId: channelData[1],
+                tabId: channelData[2],
+                rawtype: channelData[3]
+            });
+            return;
+        }
 
+        // The channel was never serviced.
         var pendingRequest = this.lookupPendingRequest(URI.spec);
 
-        // Behind-the-scene request
-        if ( pendingRequest === null ) {
-            var rawtype = channel.loadInfo && channel.loadInfo.contentPolicyType || 1;
-            if ( this.handleRequest(channel, URI, { tabId: vAPI.noTabId, rawtype: rawtype }) ) {
-                return;
-            }
+        // https://github.com/gorhill/uMatrix/issues/390#issuecomment-155759004
+        var loadInfo = channel.loadInfo,
+            rawtype = 1,
+            frameId = 0,
+            parentFrameId = -1;
 
-            // Carry data for behind-the-scene redirects
-            if ( channel instanceof Ci.nsIWritablePropertyBag ) {
-                channel.setProperty( this.REQDATAKEY, [0, -1, null, vAPI.noTabId, rawtype]);
+        // https://bugzilla.mozilla.org/show_bug.cgi?id=1232354
+        // https://dxr.mozilla.org/mozilla-central/source/toolkit/modules/addons/WebRequest.jsm#537-553
+        // For modern Firefox, loadInfo contains the information about the
+        // context of the network request.
+        if ( loadInfo ) {
+            rawtype = loadInfo.externalContentPolicyType !== undefined ?
+                loadInfo.externalContentPolicyType :
+                loadInfo.contentPolicyType;
+            if ( !rawtype ) {
+                rawtype = 1;
             }
+            frameId = loadInfo.frameOuterWindowID ? loadInfo.frameOuterWindowID : loadInfo.outerWindowID;
+            parentFrameId = loadInfo.frameOuterWindowID ? loadInfo.outerWindowID : loadInfo.parentOuterWindowID;
+            if ( frameId === parentFrameId ) {
+                parentFrameId = -1;
+            }
+        }
 
-            return;
+        if ( pendingRequest !== null ) {
+            // https://github.com/gorhill/uBlock/issues/654
+            //   Use the request type from the HTTP observer point of view.
+            if ( rawtype !== 1 ) {
+                pendingRequest.rawtype = rawtype;
+            }
+            // IMPORTANT:
+            // If this is a main frame, ensure that the proper tab id is being
+            // used: it can happen that the wrong tab id was looked up at
+            // `shouldLoadListener` time. Without this, the popup blocker may
+            // not work properly, and also a tab opened from a link may end up
+            // being wrongly reported as an embedded element.
+            if ( pendingRequest.rawtype === 6 ) {
+                var tabId = this.tabIdFromChannel(channel);
+                if ( tabId !== vAPI.noTabId ) {
+                    pendingRequest.tabId = tabId;
+                }
+            }
+        } else { // pendingRequest === null
+            // No matching pending request found, synthetize one.
+            pendingRequest = this.syntheticPendingRequest;
+            pendingRequest.tabId = this.tabIdFromChannel(channel);
+            pendingRequest.rawtype = rawtype;
+            pendingRequest.frameId = frameId;
+            pendingRequest.parentFrameId = parentFrameId;
         }
 
         if ( this.handleRequest(channel, URI, pendingRequest) ) {
@@ -1723,7 +2312,6 @@ var httpObserver = {
             channel.setProperty(this.REQDATAKEY, [
                 pendingRequest.frameId,
                 pendingRequest.parentFrameId,
-                pendingRequest.sourceTabId,
                 pendingRequest.tabId,
                 pendingRequest.rawtype
             ]);
@@ -1732,51 +2320,34 @@ var httpObserver = {
 
     // contentPolicy.shouldLoad doesn't detect redirects, this needs to be used
     asyncOnChannelRedirect: function(oldChannel, newChannel, flags, callback) {
-        var result = this.ACCEPT;
-
         // If error thrown, the redirect will fail
         try {
             var URI = newChannel.URI;
-
             if ( !URI.schemeIs('http') && !URI.schemeIs('https') ) {
                 return;
             }
 
-            if ( !(oldChannel instanceof Ci.nsIWritablePropertyBag) ) {
-                return;
-            }
-
-            var channelData = oldChannel.getProperty(this.REQDATAKEY);
-
-            if ( this.handlePopup(URI, channelData[3], channelData[2]) ) {
-                result = this.ABORT;
-                return;
-            }
-
-            var details = {
-                frameId: channelData[0],
-                parentFrameId: channelData[1],
-                tabId: channelData[3],
-                rawtype: channelData[4]
-            };
-
-            if ( this.handleRequest(newChannel, URI, details) ) {
-                result = this.ABORT;
+            if (
+                oldChannel instanceof Ci.nsIWritablePropertyBag === false ||
+                newChannel instanceof Ci.nsIWritablePropertyBag === false
+            ) {
                 return;
             }
 
             // Carry the data on in case of multiple redirects
-            if ( newChannel instanceof Ci.nsIWritablePropertyBag ) {
-                newChannel.setProperty(this.REQDATAKEY, channelData);
-            }
+            newChannel.setProperty(
+                this.REQDATAKEY,
+                oldChannel.getProperty(this.REQDATAKEY)
+            );
         } catch (ex) {
             // console.error(ex);
         } finally {
-            callback.onRedirectVerifyCallback(result);
+            callback.onRedirectVerifyCallback(this.ACCEPT);
         }
     }
 };
 
+/******************************************************************************/
 /******************************************************************************/
 
 vAPI.net = {};
@@ -1784,12 +2355,67 @@ vAPI.net = {};
 /******************************************************************************/
 
 vAPI.net.registerListeners = function() {
-    // Since it's not used
-    this.onBeforeSendHeaders = null;
+    if ( typeof this.onBeforeRequest.callback === 'function' ) {
+        httpObserver.onBeforeRequest = this.onBeforeRequest.callback;
+        httpObserver.onBeforeRequestTypes = this.onBeforeRequest.types ?
+            new Set(this.onBeforeRequest.types) :
+            null;
+    }
 
-    this.onBeforeRequest.types = this.onBeforeRequest.types ?
-        new Set(this.onBeforeRequest.types) :
-        null;
+    if ( typeof this.onHeadersReceived.callback === 'function' ) {
+        httpObserver.onHeadersReceived = this.onHeadersReceived.callback;
+        httpObserver.onHeadersReceivedTypes = this.onHeadersReceived.types ?
+            new Set(this.onHeadersReceived.types) :
+            null;
+    }
+
+    var shouldLoadPopupListenerMessageName = location.host + ':shouldLoadPopup';
+    var shouldLoadPopupListenerEntries = [];
+    var shouldLoadPopupListener = function(e) {
+        if ( typeof vAPI.tabs.onPopupCreated !== 'function' ) { return; }
+
+        var target = e.target,
+            data = e.data,
+            now = Date.now(),
+            entries = shouldLoadPopupListenerEntries,
+            entry;
+
+        var i = entries.length;
+        while ( i-- ) {
+            entry = entries[i];
+            if ( entry.id === data.id ) {
+                entries.splice(i, 1);
+                break;
+            }
+            if ( entry.expire <= now ) {
+                entries.splice(i, 1);
+            }
+            entry = undefined;
+        }
+        if ( !entry ) {
+            entry = {
+                id: data.id,
+                popupTabId: undefined,
+                openerTabId: undefined,
+                expire: now + 10000
+            };
+            entries.push(entry);
+        }
+        var tabId = tabWatcher.tabIdFromTarget(target);
+        if ( data.popup ) {
+            entry.popupTabId = tabId;
+        } else /* if ( data.opener ) */ {
+            entry.openerTabId = tabId;
+        }
+        if ( entry.popupTabId && entry.openerTabId ) {
+            vAPI.tabs.onPopupCreated(entry.popupTabId, entry.openerTabId);
+        }
+    };
+
+    vAPI.messaging.globalMessageManager.addMessageListener(
+        shouldLoadPopupListenerMessageName,
+        shouldLoadPopupListener
+    );
 
     var shouldLoadListenerMessageName = location.host + ':shouldLoad';
     var shouldLoadListener = function(e) {
@@ -1798,51 +2424,15 @@ vAPI.net.registerListeners = function() {
         // a request would end up being categorized as a behind-the-scene
         // requests.
         var details = e.data;
-        var tabId = tabWatcher.tabIdFromTarget(e.target);
-        var sourceTabId = null;
 
-        // Popup candidate
-        if ( details.openerURL ) {
-            for ( var browser of tabWatcher.browsers() ) {
-                var URI = browser.currentURI;
-
-                // Probably isn't the best method to identify the source tab.
-
-                // https://github.com/gorhill/uBlock/issues/450
-                // Skip entry if no valid URI available.
-                // Apparently URI can be undefined under some circumstances: I
-                // believe this may have to do with those very temporary
-                // browser objects created when opening a new tab, i.e. related
-                // to https://github.com/gorhill/uBlock/issues/212
-                if ( !URI || URI.spec !== details.openerURL ) {
-                    continue;
-                }
-
-                sourceTabId = tabWatcher.tabIdFromTarget(browser);
-
-                if ( sourceTabId === tabId ) {
-                    sourceTabId = null;
-                    continue;
-                }
-
-                URI = Services.io.newURI(details.url, null, null);
-
-                if ( httpObserver.handlePopup(URI, tabId, sourceTabId) ) {
-                    return;
-                }
-
-                break;
-            }
-        }
-
-        //console.log('shouldLoadListener:', details.url);
-
+        // We are being called synchronously from the content process, so we
+        // must return ASAP. The code below merely record the details of the
+        // request into a ring buffer for later retrieval by the HTTP observer.
         var pendingReq = httpObserver.createPendingRequest(details.url);
         pendingReq.frameId = details.frameId;
-        pendingReq.parentFrameId = details.parentFrameId;
-        pendingReq.rawtype = details.rawtype;
-        pendingReq.sourceTabId = sourceTabId;
-        pendingReq.tabId = tabId;
+        pendingReq.parentFrameId = details.pFrameId;
+        pendingReq.rawtype = details.type;
+        pendingReq.tabId = tabWatcher.tabIdFromTarget(e.target);
     };
 
     vAPI.messaging.globalMessageManager.addMessageListener(
@@ -1852,16 +2442,34 @@ vAPI.net.registerListeners = function() {
 
     var locationChangedListenerMessageName = location.host + ':locationChanged';
     var locationChangedListener = function(e) {
-        var details = e.data;
         var browser = e.target;
-        var tabId = tabWatcher.tabIdFromTarget(browser);
 
-        // Ignore notifications related to our popup
-        if ( details.url.lastIndexOf(vAPI.getURL('popup.html'), 0) === 0 ) {
+        // I have seen this happens (at startup time)
+        if ( !browser.currentURI ) {
             return;
         }
 
-        //console.debug("nsIWebProgressListener: onLocationChange: " + details.url + " (" + details.flags + ")");        
+        // https://github.com/gorhill/uBlock/issues/697
+        // Dismiss event if the associated tab is pending.
+        var tab = tabWatcher.tabFromBrowser(browser);
+        if ( !vAPI.fennec && tab && tab.hasAttribute('pending') ) {
+            // https://github.com/gorhill/uBlock/issues/820
+            // Firefox quirk: it happens the `pending` attribute was not
+            // present for certain tabs at startup -- and this can cause
+            // unwanted [browser <--> tab id] associations internally.
+            // Dispose of these if it is found the `pending` attribute is
+            // set.
+            tabWatcher.removeTarget(tab);
+            return;
+        }
+
+        var details = e.data;
+        var tabId = tabWatcher.tabIdFromTarget(browser);
+
+        // Ignore notifications related to our popup
+        if ( details.url.startsWith(vAPI.getURL('popup.html')) ) {
+            return;
+        }
 
         // LOCATION_CHANGE_SAME_DOCUMENT = "did not load a new document"
         if ( details.flags & Ci.nsIWebProgressListener.LOCATION_CHANGE_SAME_DOCUMENT ) {
@@ -1878,7 +2486,7 @@ vAPI.net.registerListeners = function() {
         vAPI.tabs.onNavigation({
             frameId: 0,
             tabId: tabId,
-            url: details.url,
+            url: details.url
         });
     };
 
@@ -1890,6 +2498,11 @@ vAPI.net.registerListeners = function() {
     httpObserver.register();
 
     cleanupTasks.push(function() {
+        vAPI.messaging.globalMessageManager.removeMessageListener(
+            shouldLoadPopupListenerMessageName,
+            shouldLoadPopupListener
+        );
+
         vAPI.messaging.globalMessageManager.removeMessageListener(
             shouldLoadListenerMessageName,
             shouldLoadListener
@@ -1934,7 +2547,7 @@ vAPI.toolbarButton = {
     var menuItemIds = new WeakMap();
 
     var shutdown = function() {
-        for ( var win of vAPI.tabs.getWindows() ) {
+        for ( var win of winWatcher.getWindows() ) {
             var id = menuItemIds.get(win);
             if ( !id ) {
                 continue;
@@ -1962,10 +2575,10 @@ vAPI.toolbarButton = {
     };
 
     tbb.onClick = function() {
-        var win = Services.wm.getMostRecentWindow('navigator:browser');
+        var win = winWatcher.getCurrentWindow();
         var curTabId = tabWatcher.tabIdFromTarget(getTabBrowser(win).selectedTab);
         vAPI.tabs.open({
-            url: 'popup.html?tabId=' + curTabId,
+            url: 'popup.html?tabId=' + curTabId + '&mobile=1',
             index: -1,
             select: true
         });
@@ -1981,15 +2594,31 @@ vAPI.toolbarButton = {
         });
     };
 
+    // https://github.com/gorhill/uBlock/issues/955
+    // Defer until `NativeWindow` is available.
+    tbb.initOne = function(win) {
+        if ( !win.NativeWindow ) {
+            return;
+        }
+        var label = this.getMenuItemLabel();
+        var id = win.NativeWindow.menu.add({
+            name: label,
+            callback: this.onClick
+        });
+        menuItemIds.set(win, id);
+    };
+
+    tbb.canInit = function(win) {
+        return !!win.NativeWindow;
+    };
+
     tbb.init = function() {
         // Only actually expecting one window under Fennec (note, not tabs, windows)
-        for ( var win of vAPI.tabs.getWindows() ) {
-            var label = this.getMenuItemLabel();
-            var id = win.NativeWindow.menu.add({
-                name: label,
-                callback: this.onClick
-            });
-            menuItemIds.set(win, id);
+        for ( var win of winWatcher.getWindows() ) {
+            deferUntil(
+                this.canInit.bind(this, win),
+                this.initOne.bind(this, win)
+            );
         }
 
         cleanupTasks.push(shutdown);
@@ -2061,9 +2690,12 @@ vAPI.toolbarButton = {
             resizeTimer = null;
             var body = iframe.contentDocument.body;
             panel.parentNode.style.maxWidth = 'none';
+
+            // https://github.com/gorhill/uMatrix/issues/362
+            panel.parentNode.style.opacity = '1';
+
             // https://github.com/chrisaljoudi/uBlock/issues/730
             // Voodoo programming: this recipe works
-
             var clientHeight = body.clientHeight;
             iframe.style.height = toPx(clientHeight);
             panel.style.height = toPx(clientHeight + panel.boxObject.height - panel.clientHeight);
@@ -2103,7 +2735,7 @@ vAPI.toolbarButton = {
 
 /******************************************************************************/
 
-// Firefox 28 and less
+// Firefox 35 and less: use legacy toolbar button.
 
 (function() {
     var tbb = vAPI.toolbarButton;
@@ -2118,7 +2750,10 @@ vAPI.toolbarButton = {
         } catch (ex) {
         }
     }
-    if ( CustomizableUI !== null ) {
+    if (
+        CustomizableUI !== null &&
+        Services.vc.compare(Services.appinfo.platformVersion, '36.0') >= 0
+    ) {
         return;
     }
 
@@ -2126,28 +2761,10 @@ vAPI.toolbarButton = {
     tbb.id = 'uBlock0-legacy-button';   // NOTE: must match legacy-toolbar-button.css
     tbb.viewId = tbb.id + '-panel';
 
-    var sss = null;
     var styleSheetUri = null;
 
-    var addLegacyToolbarButton = function(window) {
+    var createToolbarButton = function(window) {
         var document = window.document;
-
-        var toolbox = document.getElementById('navigator-toolbox') || document.getElementById('mail-toolbox');
-        if ( !toolbox ) {
-            return;
-        }
-
-        // palette might take a little longer to appear on some platforms,
-        // give it a small delay and try again.
-        var palette = toolbox.palette;
-        if ( !palette ) {
-            vAPI.setTimeout(function() {
-                if ( toolbox.palette ) {
-                    addLegacyToolbarButton(window);
-                }
-            }, 250);
-            return;
-        }
 
         var toolbarButton = document.createElement('toolbarbutton');
         toolbarButton.setAttribute('id', tbb.id);
@@ -2167,95 +2784,164 @@ vAPI.toolbarButton = {
         toolbarButtonPanel.addEventListener('popuphiding', tbb.onViewHiding);
         toolbarButton.appendChild(toolbarButtonPanel);
 
-        palette.appendChild(toolbarButton);
+        return toolbarButton;
+    };
 
-        tbb.closePopup = function() {
-            toolbarButtonPanel.hidePopup();
-        };
+    var addLegacyToolbarButton = function(window) {
+        // uBO's stylesheet lazily added.
+        if ( styleSheetUri === null ) {
+            var sss = Cc['@mozilla.org/content/style-sheet-service;1']
+                        .getService(Ci.nsIStyleSheetService);
+            styleSheetUri = Services.io.newURI(vAPI.getURL('css/legacy-toolbar-button.css'), null, null);
 
-        // No button yet so give it a default location. If forcing the button,
-        // just put in in the palette rather than on any specific toolbar (who
-        // knows what toolbars will be available or visible!)
-        var toolbar;
-        if ( !vAPI.localStorage.getBool('legacyToolbarButtonAdded') ) {
-            vAPI.localStorage.setBool('legacyToolbarButtonAdded', 'true');
-            toolbar = document.getElementById('nav-bar');
-            if ( toolbar === null ) {
-                return;
+            // Register global so it works in all windows, including palette
+            if ( !sss.sheetRegistered(styleSheetUri, sss.AUTHOR_SHEET) ) {
+                sss.loadAndRegisterSheet(styleSheetUri, sss.AUTHOR_SHEET);
             }
-            // https://github.com/gorhill/uBlock/issues/264
-            // Find a child customizable palette, if any.
-            toolbar = toolbar.querySelector('.customization-target') || toolbar;
-            toolbar.appendChild(toolbarButton);
-            toolbar.setAttribute('currentset', toolbar.currentSet);
-            document.persist(toolbar.id, 'currentset');
+        }
+
+        var document = window.document;
+
+        // https://github.com/gorhill/uMatrix/issues/357
+        // Already installed?
+        if ( document.getElementById(tbb.id) !== null ) {
             return;
         }
 
-        // Find the place to put the button
-        var toolbars = toolbox.externalToolbars.slice();
+        var toolbox = document.getElementById('navigator-toolbox') ||
+                      document.getElementById('mail-toolbox');
+        if ( toolbox === null ) {
+            return;
+        }
+
+        var toolbarButton = createToolbarButton(window);
+
+        // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XUL/toolbarpalette
+        var palette = toolbox.palette;
+        if ( palette && palette.querySelector('#' + tbb.id) === null ) {
+            palette.appendChild(toolbarButton);
+        }
+
+        // Find the place to put the button.
+        // Pale Moon: `toolbox.externalToolbars` can be undefined. Seen while
+        //   testing popup test number 3:
+        //   http://raymondhill.net/ublock/popup.html
+        var toolbars = toolbox.externalToolbars ? toolbox.externalToolbars.slice() : [];
         for ( var child of toolbox.children ) {
             if ( child.localName === 'toolbar' ) {
                 toolbars.push(child);
             }
         }
 
-        for ( toolbar of toolbars ) {
+        for ( var toolbar of toolbars ) {
             var currentsetString = toolbar.getAttribute('currentset');
             if ( !currentsetString ) {
                 continue;
             }
-            var currentset = currentsetString.split(',');
+            var currentset = currentsetString.split(/\s*,\s*/);
             var index = currentset.indexOf(tbb.id);
             if ( index === -1 ) {
+                continue;
+            }
+            // This can occur with Pale Moon:
+            //   "TypeError: toolbar.insertItem is not a function"
+            if ( typeof toolbar.insertItem !== 'function' ) {
                 continue;
             }
             // Found our button on this toolbar - but where on it?
             var before = null;
             for ( var i = index + 1; i < currentset.length; i++ ) {
-                before = document.getElementById(currentset[i]);
-                if ( before === null ) {
-                    continue;
+                before = toolbar.querySelector('[id="' + currentset[i] + '"]');
+                if ( before !== null ) {
+                    break;
                 }
-                toolbar.insertItem(tbb.id, before);
-                break;
             }
-            if ( before === null ) {
-                toolbar.insertItem(tbb.id);
-            }
+            // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XUL/Method/insertItem
+            toolbar.insertItem(tbb.id, before);
+            break;
+        }
+
+        // https://github.com/gorhill/uBlock/issues/763
+        // We are done if our toolbar button is already installed in one of the
+        // toolbar.
+        if ( palette !== null && toolbarButton.parentElement !== palette ) {
+            return;
+        }
+
+        // No button yet so give it a default location. If forcing the button,
+        // just put in in the palette rather than on any specific toolbar (who
+        // knows what toolbars will be available or visible!)
+        var navbar = document.getElementById('nav-bar');
+        if ( navbar !== null && !vAPI.localStorage.getBool('legacyToolbarButtonAdded') ) {
+            // https://github.com/gorhill/uBlock/issues/264
+            // Find a child customizable palette, if any.
+            navbar = navbar.querySelector('.customization-target') || navbar;
+            navbar.appendChild(toolbarButton);
+            navbar.setAttribute('currentset', navbar.currentSet);
+            document.persist(navbar.id, 'currentset');
+            vAPI.localStorage.setBool('legacyToolbarButtonAdded', 'true');
         }
     };
 
+    var canAddLegacyToolbarButton = function(window) {
+        var document = window.document;
+        if (
+            !document ||
+            document.readyState !== 'complete' ||
+            document.getElementById('nav-bar') === null
+        ) {
+            return false;
+        }
+        var toolbox = document.getElementById('navigator-toolbox') ||
+                      document.getElementById('mail-toolbox');
+        return toolbox !== null && !!toolbox.palette;
+    };
+
     var onPopupCloseRequested = function({target}) {
-        if ( typeof tbb.closePopup === 'function' ) {
-            tbb.closePopup(target);
+        var document = target.ownerDocument;
+        if ( !document ) {
+            return;
+        }
+        var toolbarButtonPanel = document.getElementById(tbb.viewId);
+        if ( toolbarButtonPanel === null ) {
+            return;
+        }
+        // `hidePopup` reported as not existing while testing legacy button
+        //  on FF 41.0.2.
+        // https://bugzilla.mozilla.org/show_bug.cgi?id=1151796
+        if ( typeof toolbarButtonPanel.hidePopup === 'function' ) {
+            toolbarButtonPanel.hidePopup();
         }
     };
 
     var shutdown = function() {
-        for ( var win of vAPI.tabs.getWindows() ) {
+        for ( var win of winWatcher.getWindows() ) {
             var toolbarButton = win.document.getElementById(tbb.id);
             if ( toolbarButton ) {
                 toolbarButton.parentNode.removeChild(toolbarButton);
             }
         }
-        if ( sss === null ) {
-            return;
-        }
-        if ( sss.sheetRegistered(styleSheetUri, sss.AUTHOR_SHEET) ) {
-            sss.unregisterSheet(styleSheetUri, sss.AUTHOR_SHEET);
-        }
-        sss = null;
-        styleSheetUri = null;
 
         vAPI.messaging.globalMessageManager.removeMessageListener(
             location.host + ':closePopup',
             onPopupCloseRequested
         );
+
+        if ( styleSheetUri !== null ) {
+            var sss = Cc['@mozilla.org/content/style-sheet-service;1']
+                        .getService(Ci.nsIStyleSheetService);
+            if ( sss.sheetRegistered(styleSheetUri, sss.AUTHOR_SHEET) ) {
+                sss.unregisterSheet(styleSheetUri, sss.AUTHOR_SHEET);
+            }
+            styleSheetUri = null;
+        }
     };
 
     tbb.attachToNewWindow = function(win) {
-        addLegacyToolbarButton(win);
+        deferUntil(
+            canAddLegacyToolbarButton.bind(null, win),
+            addLegacyToolbarButton.bind(null, win)
+        );
     };
 
     tbb.init = function() {
@@ -2263,145 +2949,6 @@ vAPI.toolbarButton = {
             location.host + ':closePopup',
             onPopupCloseRequested
         );
-
-        sss = Cc["@mozilla.org/content/style-sheet-service;1"].getService(Ci.nsIStyleSheetService);
-        styleSheetUri = Services.io.newURI(vAPI.getURL("css/legacy-toolbar-button.css"), null, null);
-
-        // Register global so it works in all windows, including palette
-        if ( !sss.sheetRegistered(styleSheetUri, sss.AUTHOR_SHEET) ) {
-            sss.loadAndRegisterSheet(styleSheetUri, sss.AUTHOR_SHEET);
-        }
-
-        cleanupTasks.push(shutdown);
-    };
-})();
-
-/******************************************************************************/
-
-// Firefox Australis < 36.
-
-(function() {
-    var tbb = vAPI.toolbarButton;
-    if ( tbb.init !== null ) {
-        return;
-    }
-    if ( Services.vc.compare(Services.appinfo.platformVersion, '36.0') >= 0 ) {
-        return null;
-    }
-    if ( vAPI.localStorage.getBool('forceLegacyToolbarButton') ) {
-        return null;
-    }
-    var CustomizableUI = null;
-    try {
-        CustomizableUI = Cu.import('resource:///modules/CustomizableUI.jsm', null).CustomizableUI;
-    } catch (ex) {
-    }
-    if ( CustomizableUI === null ) {
-        return;
-    }
-    tbb.codePath = 'australis';
-    tbb.CustomizableUI = CustomizableUI;
-    tbb.defaultArea = CustomizableUI.AREA_NAVBAR;
-
-    var styleURI = null;
-
-    var onPopupCloseRequested = function({target}) {
-        if ( typeof tbb.closePopup === 'function' ) {
-            tbb.closePopup(target);
-        }
-    };
-
-    var shutdown = function() {
-        CustomizableUI.destroyWidget(tbb.id);
-
-        for ( var win of vAPI.tabs.getWindows() ) {
-            var panel = win.document.getElementById(tbb.viewId);
-            panel.parentNode.removeChild(panel);
-            win.QueryInterface(Ci.nsIInterfaceRequestor)
-               .getInterface(Ci.nsIDOMWindowUtils)
-               .removeSheet(styleURI, 1);
-        }
-
-        vAPI.messaging.globalMessageManager.removeMessageListener(
-            location.host + ':closePopup',
-            onPopupCloseRequested
-        );
-    };
-
-    tbb.onBeforeCreated = function(doc) {
-        var panel = doc.createElement('panelview');
-
-        this.populatePanel(doc, panel);
-
-        doc.getElementById('PanelUI-multiView').appendChild(panel);
-
-        doc.defaultView.QueryInterface(Ci.nsIInterfaceRequestor)
-            .getInterface(Ci.nsIDOMWindowUtils)
-            .loadSheet(styleURI, 1);
-    };
-
-    tbb.onBeforePopupReady = function() {
-        // https://github.com/gorhill/uBlock/issues/83
-        // Add `portrait` class if width is constrained.
-        try {
-            this.contentDocument.body.classList.toggle(
-                'portrait',
-                CustomizableUI.getWidget(tbb.id).areaType === CustomizableUI.TYPE_MENU_PANEL
-            );
-        } catch (ex) {
-            /* noop */
-        }
-    };
-
-    tbb.init = function() {
-        vAPI.messaging.globalMessageManager.addMessageListener(
-            location.host + ':closePopup',
-            onPopupCloseRequested
-        );
-
-        var style = [
-            '#' + this.id + '.off {',
-                'list-style-image: url(',
-                    vAPI.getURL('img/browsericons/icon16-off.svg'),
-                ');',
-            '}',
-            '#' + this.id + ' {',
-                'list-style-image: url(',
-                    vAPI.getURL('img/browsericons/icon16.svg'),
-                ');',
-            '}',
-            '#' + this.viewId + ',',
-            '#' + this.viewId + ' > iframe {',
-                'width: 160px;',
-                'height: 290px;',
-                'overflow: hidden !important;',
-            '}',
-            '#' + this.id + '[badge]:not([badge=""])::after {',
-                'position: absolute;',
-                'margin-left: -16px;',
-                'margin-top: 3px;',
-                'padding: 1px 2px;',
-                'font-size: 9px;',
-                'font-weight: bold;',
-                'color: #fff;',
-                'background: #666;',
-                'content: attr(badge);',
-            '}'
-        ];
-
-        styleURI = Services.io.newURI(
-            'data:text/css,' + encodeURIComponent(style.join('')),
-            null,
-            null
-        );
-
-        this.closePopup = function(tabBrowser) {
-            CustomizableUI.hidePanelForNode(
-                tabBrowser.ownerDocument.getElementById(this.viewId)
-            );
-        };
-
-        CustomizableUI.createWidget(this);
 
         cleanupTasks.push(shutdown);
     };
@@ -2442,7 +2989,7 @@ vAPI.toolbarButton = {
     ].join(';');
 
     var updateBadgeStyle = function() {
-        for ( var win of vAPI.tabs.getWindows() ) {
+        for ( var win of winWatcher.getWindows() ) {
             var button = win.document.getElementById(tbb.id);
             if ( button === null ) {
                 continue;
@@ -2464,7 +3011,7 @@ vAPI.toolbarButton = {
         var wId = tbb.id;
         var buttonInPanel = CustomizableUI.getWidget(wId).areaType === CustomizableUI.TYPE_MENU_PANEL;
 
-        for ( var win of vAPI.tabs.getWindows() ) {
+        for ( var win of winWatcher.getWindows() ) {
             var button = win.document.getElementById(wId);
             if ( button === null ) {
                 continue;
@@ -2496,17 +3043,18 @@ vAPI.toolbarButton = {
     };
 
     var shutdown = function() {
-        CustomizableUI.removeListener(CUIEvents);
-        CustomizableUI.destroyWidget(tbb.id);
-
-        for ( var win of vAPI.tabs.getWindows() ) {
+        for ( var win of winWatcher.getWindows() ) {
             var panel = win.document.getElementById(tbb.viewId);
-            panel.parentNode.removeChild(panel);
+            if ( panel !== null && panel.parentNode !== null ) {
+                panel.parentNode.removeChild(panel);
+            }
             win.QueryInterface(Ci.nsIInterfaceRequestor)
                 .getInterface(Ci.nsIDOMWindowUtils)
                 .removeSheet(styleURI, 1);
         }
 
+        CustomizableUI.removeListener(CUIEvents);
+        CustomizableUI.destroyWidget(tbb.id);
 
         vAPI.messaging.globalMessageManager.removeMessageListener(
             location.host + ':closePopup',
@@ -2612,132 +3160,20 @@ if ( vAPI.toolbarButton.init !== null ) {
 /******************************************************************************/
 /******************************************************************************/
 
-vAPI.contextMenu = {
-    contextMap: {
+vAPI.contextMenu = (function() {
+    var clientCallback = null;
+    var clientEntries = [];
+
+    var contextMap = {
         frame: 'inFrame',
         link: 'onLink',
         image: 'onImage',
         audio: 'onAudio',
         video: 'onVideo',
         editable: 'onEditableArea'
-    }
-};
+    };
 
-/******************************************************************************/
-
-vAPI.contextMenu.displayMenuItem = function({target}) {
-    var doc = target.ownerDocument;
-    var gContextMenu = doc.defaultView.gContextMenu;
-
-    if ( !gContextMenu.browser ) {
-        return;
-    }
-
-    var menuitem = doc.getElementById(vAPI.contextMenu.menuItemId);
-    var currentURI = gContextMenu.browser.currentURI;
-
-    // https://github.com/chrisaljoudi/uBlock/issues/105
-    // TODO: Should the element picker works on any kind of pages?
-    if ( !currentURI.schemeIs('http') && !currentURI.schemeIs('https') ) {
-        menuitem.hidden = true;
-        return;
-    }
-
-    var ctx = vAPI.contextMenu.contexts;
-
-    if ( !ctx ) {
-        menuitem.hidden = false;
-        return;
-    }
-
-    var ctxMap = vAPI.contextMenu.contextMap;
-
-    for ( var context of ctx ) {
-        if ( context === 'page' && !gContextMenu.onLink && !gContextMenu.onImage
-            && !gContextMenu.onEditableArea && !gContextMenu.inFrame
-            && !gContextMenu.onVideo && !gContextMenu.onAudio ) {
-            menuitem.hidden = false;
-            return;
-        }
-
-        if ( gContextMenu[ctxMap[context]] ) {
-            menuitem.hidden = false;
-            return;
-        }
-    }
-
-    menuitem.hidden = true;
-};
-
-/******************************************************************************/
-
-vAPI.contextMenu.register = function(doc) {
-    if ( !this.menuItemId ) {
-        return;
-    }
-
-    if ( vAPI.fennec ) {
-        // TODO https://developer.mozilla.org/en-US/Add-ons/Firefox_for_Android/API/NativeWindow/contextmenus/add
-        /*var nativeWindow = doc.defaultView.NativeWindow;
-        contextId = nativeWindow.contextmenus.add(
-            this.menuLabel,
-            nativeWindow.contextmenus.linkOpenableContext,
-            this.onCommand
-        );*/
-        return;
-    }
-
-    var contextMenu = doc.getElementById('contentAreaContextMenu');
-    var menuitem = doc.createElement('menuitem');
-    menuitem.setAttribute('id', this.menuItemId);
-    menuitem.setAttribute('label', this.menuLabel);
-    menuitem.setAttribute('image', vAPI.getURL('img/browsericons/icon16.svg'));
-    menuitem.setAttribute('class', 'menuitem-iconic');
-    menuitem.addEventListener('command', this.onCommand);
-    contextMenu.addEventListener('popupshowing', this.displayMenuItem);
-    contextMenu.insertBefore(menuitem, doc.getElementById('inspect-separator'));
-};
-
-/******************************************************************************/
-
-vAPI.contextMenu.unregister = function(doc) {
-    if ( !this.menuItemId ) {
-        return;
-    }
-
-    if ( vAPI.fennec ) {
-        // TODO
-        return;
-    }
-
-    var menuitem = doc.getElementById(this.menuItemId);
-
-    // Not guarantee the menu item was actually registered.
-    if ( menuitem === null ) {
-        return;
-    }
-
-    var contextMenu = menuitem.parentNode;
-    menuitem.removeEventListener('command', this.onCommand);
-    contextMenu.removeEventListener('popupshowing', this.displayMenuItem);
-    contextMenu.removeChild(menuitem);
-};
-
-/******************************************************************************/
-
-vAPI.contextMenu.create = function(details, callback) {
-    this.menuItemId = details.id;
-    this.menuLabel = details.title;
-    this.contexts = details.contexts;
-
-    if ( Array.isArray(this.contexts) && this.contexts.length ) {
-        this.contexts = this.contexts.indexOf('all') === -1 ? this.contexts : null;
-    } else {
-        // default in Chrome
-        this.contexts = ['page'];
-    }
-
-    this.onCommand = function() {
+    var onCommand = function() {
         var gContextMenu = getOwnerWindow(this).gContextMenu;
         var details = {
             menuItemId: this.id
@@ -2761,72 +3197,374 @@ vAPI.contextMenu.create = function(details, callback) {
             details.linkUrl = gContextMenu.linkURL;
         }
 
-        callback(details, {
+        clientCallback(details, {
             id: tabWatcher.tabIdFromTarget(gContextMenu.browser),
             url: gContextMenu.browser.currentURI.asciiSpec
         });
     };
 
-    for ( var win of vAPI.tabs.getWindows() ) {
-        this.register(win.document);
-    }
-};
-
-/******************************************************************************/
-
-vAPI.contextMenu.remove = function() {
-    for ( var win of vAPI.tabs.getWindows() ) {
-        this.unregister(win.document);
-    }
-
-    this.menuItemId = null;
-    this.menuLabel = null;
-    this.contexts = null;
-    this.onCommand = null;
-};
-
-/******************************************************************************/
-
-var optionsObserver = {
-    addonId: 'uBlock0@raymondhill.net',
-
-    register: function() {
-        Services.obs.addObserver(this, 'addon-options-displayed', false);
-        cleanupTasks.push(this.unregister.bind(this));
-
-        var browser = tabWatcher.currentBrowser();
-        if ( browser && browser.currentURI && browser.currentURI.spec === 'about:addons' ) {
-            this.observe(browser.contentDocument, 'addon-enabled', this.addonId);
+    var menuItemMatchesContext = function(contextMenu, clientEntry) {
+        if ( !clientEntry.contexts ) {
+            return false;
         }
-    },
+        for ( var context of clientEntry.contexts ) {
+            if ( context === 'all' ) {
+                return true;
+            }
+            if (
+                contextMap.hasOwnProperty(context) &&
+                contextMenu[contextMap[context]]
+            ) {
+                return true;
+            }
+        }
+        return false;
+    };
 
-    unregister: function() {
-        Services.obs.removeObserver(this, 'addon-options-displayed');
-    },
+    var onMenuShowing = function({target}) {
+        var doc = target.ownerDocument;
+        var gContextMenu = doc.defaultView.gContextMenu;
+        if ( !gContextMenu.browser ) {
+            return;
+        }
 
-    setupOptionsButton: function(doc, id, page) {
+        // https://github.com/chrisaljoudi/uBlock/issues/105
+        // TODO: Should the element picker works on any kind of pages?
+        var currentURI = gContextMenu.browser.currentURI,
+            isHTTP = currentURI.schemeIs('http') || currentURI.schemeIs('https'),
+            layoutChanged = false,
+            contextMenu = doc.getElementById('contentAreaContextMenu'),
+            newEntries = clientEntries,
+            oldMenuitems = contextMenu.querySelectorAll('[data-uBlock0="menuitem"]'),
+            newMenuitems = [],
+            n = Math.max(clientEntries.length, oldMenuitems.length),
+            menuitem, newEntry;
+        for ( var i = 0; i < n; i++ ) {
+            menuitem = oldMenuitems[i];
+            newEntry = newEntries[i];
+            if ( menuitem && !newEntry ) {
+                menuitem.parentNode.removeChild(menuitem);
+                menuitem.removeEventListener('command', onCommand);
+                menuitem = null;
+                layoutChanged = true;
+            } else if ( !menuitem && newEntry ) {
+                menuitem = doc.createElement('menuitem');
+                menuitem.setAttribute('data-uBlock0', 'menuitem');
+                menuitem.addEventListener('command', onCommand);
+            }
+            if ( !menuitem ) {
+                continue;
+            }
+            if ( menuitem.id !== newEntry.id ) {
+                menuitem.setAttribute('id', newEntry.id);
+                menuitem.setAttribute('label', newEntry.title);
+                layoutChanged = true;
+            }
+            menuitem.setAttribute('hidden', !isHTTP || !menuItemMatchesContext(gContextMenu, newEntry));
+            newMenuitems.push(menuitem);
+        }
+        // No changes?
+        if ( layoutChanged === false ) {
+            return;
+        }
+        // No entry: remove submenu if present.
+        var menu = contextMenu.querySelector('[data-uBlock0="menu"]');
+        if ( newMenuitems.length === 0 ) {
+            if ( menu !== null ) {
+                menu.parentNode.removeChild(menuitem);
+            }
+            return;
+        }
+        // Only one entry: no need for a submenu.
+        if ( newMenuitems.length === 1 ) {
+            if ( menu !== null ) {
+                menu.parentNode.removeChild(menu);
+            }
+            menuitem = newMenuitems[0];
+            menuitem.setAttribute('class', 'menuitem-iconic');
+            menuitem.setAttribute('image', vAPI.getURL('img/browsericons/icon16.svg'));
+            contextMenu.insertBefore(menuitem, doc.getElementById('inspect-separator'));
+            return;
+        }
+        // More than one entry: we need a submenu.
+        if ( menu === null ) {
+            menu = doc.createElement('menu');
+            menu.setAttribute('label', vAPI.app.name);
+            menu.setAttribute('data-uBlock0', 'menu');
+            menu.setAttribute('class', 'menu-iconic');
+            menu.setAttribute('image', vAPI.getURL('img/browsericons/icon16.svg'));
+            contextMenu.insertBefore(menu, doc.getElementById('inspect-separator'));
+        }
+        var menupopup = contextMenu.querySelector('[data-uBlock0="menupopup"]');
+        if ( menupopup === null ) {
+            menupopup = doc.createElement('menupopup');
+            menupopup.setAttribute('data-uBlock0', 'menupopup');
+            menu.appendChild(menupopup);
+        }
+        for ( i = 0; i < newMenuitems.length; i++ ) {
+            menuitem = newMenuitems[i];
+            menuitem.setAttribute('class', 'menuitem-non-iconic');
+            menuitem.removeAttribute('image');
+            menupopup.appendChild(menuitem);
+        }
+    };
+
+    // https://github.com/gorhill/uBlock/issues/906
+    // Be sure document.readyState is 'complete': it could happen at launch
+    // time that we are called by vAPI.contextMenu.create() directly before
+    // the environment is properly initialized.
+    var canRegister = function(win) {
+        return win && win.document.readyState === 'complete';
+    };
+
+    var register = function(window) {
+        if ( canRegister(window) !== true ) {
+            return;
+        }
+
+        var contextMenu = window.document.getElementById('contentAreaContextMenu');
+        if ( contextMenu === null ) {
+            return;
+        }
+        contextMenu.addEventListener('popupshowing', onMenuShowing);
+    };
+
+    var registerAsync = function(win) {
+        // TODO https://developer.mozilla.org/en-US/Add-ons/Firefox_for_Android/API/NativeWindow/contextmenus/add
+        // var nativeWindow = doc.defaultView.NativeWindow;
+        // contextId = nativeWindow.contextmenus.add(
+        //    this.menuLabel,
+        //    nativeWindow.contextmenus.linkOpenableContext,
+        //    this.onCommand
+        // );
+        if ( vAPI.fennec ) {
+            return;
+        }
+        deferUntil(
+            canRegister.bind(null, win),
+            register.bind(null, win),
+            { first: 4000 }
+        );
+    };
+
+    var unregister = function(win) {
+        // TODO
+        if ( vAPI.fennec ) {
+            return;
+        }
+        var contextMenu = win.document.getElementById('contentAreaContextMenu');
+        if ( contextMenu !== null ) {
+            contextMenu.removeEventListener('popupshowing', onMenuShowing);
+        }
+        var menuitems = win.document.querySelectorAll('[data-uBlock0]'),
+            menuitem;
+        for ( var i = 0; i < menuitems.length; i++ ) {
+            menuitem = menuitems[i];
+            menuitem.parentNode.removeChild(menuitem);
+            menuitem.removeEventListener('command', onCommand);
+        }
+    };
+
+    var setEntries = function(entries, callback) {
+        clientEntries = entries || [];
+        clientCallback  = callback || null;
+    };
+
+    return {
+        onMustUpdate: function() {},
+        register: registerAsync,
+        unregister: unregister,
+        setEntries: setEntries
+    };
+})();
+
+/******************************************************************************/
+/******************************************************************************/
+
+// Keyboard shortcuts have to be hardcoded, as they are declaratively created
+// in the manifest.json file on webext API, and only a listener has to be
+// installed with the browser.commands API.
+//
+// Assuming only one client listener is installed.
+
+// Shortcuts can be customized in `about:config` using
+//     extensions.ublock0.shortcuts.[command id]    => modifier-key
+// To disable a shortcut, set it to `-`:
+//     extensions.ublock0.shortcuts.[command id]    => -
+
+vAPI.commands = (function() {
+    var commands = [
+        { id: 'launch-element-zapper', shortcut: 'alt-z' },
+        { id: 'launch-element-picker', shortcut: 'alt-x' },
+        { id: 'launch-logger',         shortcut: 'alt-l' }
+    ];
+    var clientListener;
+
+    var commandHandler = function(ev) {
+        if ( typeof clientListener !== 'function' ) { return; }
+        var match = /^uBlock0Key-([a-z-]+)$/.exec(ev.target.id);
+        if ( match === null ) { return; }
+        clientListener(match[1]);
+    };
+
+    var canRegister = function(win) {
+        return win && win.document.readyState === 'complete';
+    };
+
+    var register = function(window) {
+        if ( canRegister(window) !== true ) { return; }
+
+        var doc = window.document,
+            myKeyset = doc.getElementById('uBlock0Keyset');
+        // Already registered?
+        if ( myKeyset !== null ) { return; }
+
+        var mainKeyset = doc.getElementById('mainKeyset'),
+            keysetHolder = mainKeyset && mainKeyset.parentNode;
+        if ( keysetHolder === null ) { return; }
+
+        myKeyset = doc.createElement('keyset');
+        myKeyset.setAttribute('id', 'uBlock0Keyset');
+
+        var myKey, shortcut, parts, modifier, key;
+        for ( var command of commands ) {
+            shortcut = vAPI.localStorage.getItem('shortcuts.' + command.id);
+            if ( shortcut === null ) { shortcut = command.shortcut; }
+            parts = /(([a-z]+)-)?(\w)/.exec(shortcut);
+            if ( parts === null ) { continue; }
+            modifier = parts[2] || '';
+            key = parts[3] || '';
+            if ( key === '' ) { continue; }
+            myKey = doc.createElement('key');
+            myKey.setAttribute('id', 'uBlock0Key-' + command.id);
+            if ( modifier !== '' ) {
+                myKey.setAttribute('modifiers', parts[2]);
+            }
+            myKey.setAttribute('key', key);
+            // https://stackoverflow.com/a/16786770
+            myKey.setAttribute('oncommand', ';');
+            myKeyset.appendChild(myKey);
+        }
+
+        keysetHolder.addEventListener('command', commandHandler);
+        keysetHolder.appendChild(myKeyset);
+    };
+
+    var registerAsync = function(win) {
+        if ( vAPI.fennec ) { return; }
+        deferUntil(
+            canRegister.bind(null, win),
+            register.bind(null, win),
+            { first: 4000 }
+        );
+    };
+
+    var unregister = function(window) {
+        var doc = window.document,
+            myKeyset = doc.getElementById('uBlock0Keyset');
+        if ( myKeyset === null ) { return; }
+        myKeyset.removeEventListener('command', commandHandler);
+        myKeyset.parentNode.removeChild(myKeyset);
+    };
+
+    var addListener = function(callback) {
+        clientListener = callback;
+    };
+
+    return {
+        register: registerAsync,
+        unregister: unregister,
+        onCommand: {
+            addListener: addListener
+        }
+    };
+})();
+
+/******************************************************************************/
+/******************************************************************************/
+
+var optionsObserver = (function() {
+    var addonId = 'uBlock0@raymondhill.net';
+
+    var commandHandler = function() {
+        switch ( this.id ) {
+        case 'showDashboardButton':
+            vAPI.tabs.open({ url: 'dashboard.html', index: -1 });
+            break;
+        case 'showNetworkLogButton':
+            vAPI.tabs.open({ url: 'logger-ui.html', index: -1 });
+            break;
+        default:
+            break;
+        }
+    };
+
+    var setupOptionsButton = function(doc, id) {
         var button = doc.getElementById(id);
         if ( button === null ) {
             return;
         }
-        button.addEventListener('command', function() {
-            vAPI.tabs.open({ url: page, index: -1 });
-        });
+        button.addEventListener('command', commandHandler);
         button.label = vAPI.i18n(id);
-    },
+    };
 
-    observe: function(doc, topic, addonId) {
-        if ( addonId !== this.addonId ) {
-            return;
+    var setupOptionsButtons = function(doc) {
+        setupOptionsButton(doc, 'showDashboardButton');
+        setupOptionsButton(doc, 'showNetworkLogButton');
+    };
+
+    var observer = {
+        observe: function(doc, topic, id) {
+            if ( id !== addonId ) {
+                return;
+            }
+
+            setupOptionsButtons(doc);
         }
+    };
 
-        this.setupOptionsButton(doc, 'showDashboardButton', 'dashboard.html');
-        this.setupOptionsButton(doc, 'showNetworkLogButton', 'logger-ui.html');
-    }
-};
+    // https://github.com/gorhill/uBlock/issues/948
+    // Older versions of Firefox can throw here when looking up `currentURI`.
+
+    var canInit = function() {
+        try {
+            var tabBrowser = tabWatcher.currentBrowser();
+            return tabBrowser &&
+                   tabBrowser.currentURI &&
+                   tabBrowser.currentURI.spec === 'about:addons' &&
+                   tabBrowser.contentDocument &&
+                   tabBrowser.contentDocument.readyState === 'complete';
+        } catch (ex) {
+        }
+    };
+
+    // Manually add the buttons if the `about:addons` page is already opened.
+
+    var init = function() {
+        if ( canInit() ) {
+            setupOptionsButtons(tabWatcher.currentBrowser().contentDocument);
+        }
+    };
+
+    var unregister = function() {
+        Services.obs.removeObserver(observer, 'addon-options-displayed');
+    };
+
+    var register = function() {
+        Services.obs.addObserver(observer, 'addon-options-displayed', false);
+        cleanupTasks.push(unregister);
+        deferUntil(canInit, init, { first: 4000 });
+    };
+
+    return {
+        register: register,
+        unregister: unregister
+    };
+})();
 
 optionsObserver.register();
 
+/******************************************************************************/
 /******************************************************************************/
 
 vAPI.lastError = function() {
@@ -2841,18 +3579,24 @@ vAPI.lastError = function() {
 // the web pages before uBlock was ready.
 
 vAPI.onLoadAllCompleted = function() {
+    // TODO: vAPI shouldn't know about uBlock. Just like in uMatrix, uBlock
+    // should collect on its side all the opened tabs whenever it is ready.
     var µb = µBlock;
     var tabId;
     for ( var browser of tabWatcher.browsers() ) {
         tabId = tabWatcher.tabIdFromTarget(browser);
         µb.tabContextManager.commit(tabId, browser.currentURI.asciiSpec);
         µb.bindTabToPageStats(tabId);
-        browser.messageManager.sendAsyncMessage(
-            location.host + '-load-completed'
-        );
     }
+    // Inject special frame script, which sole purpose is to inject
+    // content scripts into *already* opened tabs. This allows to unclutter
+    // the main frame script.
+    vAPI.messaging
+        .globalMessageManager
+        .loadFrameScript(vAPI.getURL('frameScript0.js'), false);
 };
 
+/******************************************************************************/
 /******************************************************************************/
 
 // Likelihood is that we do not have to punycode: given punycode overhead,
@@ -2872,6 +3616,141 @@ vAPI.punycodeURL = function(url) {
     return url;
 };
 
+/******************************************************************************/
+/******************************************************************************/
+
+// https://github.com/gorhill/uBlock/issues/531
+// Storage area dedicated to admin settings. Read-only.
+
+vAPI.adminStorage = {
+    getItem: function(key, callback) {
+        if ( typeof callback !== 'function' ) {
+            return;
+        }
+        callback(vAPI.localStorage.getItem(key));
+    }
+};
+
+/******************************************************************************/
+/******************************************************************************/
+
+vAPI.cloud = (function() {
+    var extensionBranchPath = 'extensions.' + location.host;
+    var cloudBranchPath = extensionBranchPath + '.cloudStorage';
+
+    // https://github.com/gorhill/uBlock/issues/80#issuecomment-132081658
+    //   We must use get/setComplexValue in order to properly handle strings
+    //   with unicode characters.
+    var iss = Ci.nsISupportsString;
+    var argstr = Components.classes['@mozilla.org/supports-string;1']
+                           .createInstance(iss);
+
+    var options = {
+        defaultDeviceName: '',
+        deviceName: ''
+    };
+
+    // User-supplied device name.
+    try {
+        options.deviceName = Services.prefs
+                                     .getBranch(extensionBranchPath + '.')
+                                     .getComplexValue('deviceName', iss)
+                                     .data;
+    } catch(ex) {
+    }
+
+    var getDefaultDeviceName = function() {
+        var name = '';
+        try {
+            name = Services.prefs
+                           .getBranch('services.sync.client.')
+                           .getComplexValue('name', iss)
+                           .data;
+        } catch(ex) {
+        }
+
+        return name || window.navigator.platform || window.navigator.oscpu;
+    };
+
+    var start = function(dataKeys) {
+        var extensionBranch = Services.prefs.getBranch(extensionBranchPath + '.');
+        var syncBranch = Services.prefs.getBranch('services.sync.prefs.sync.');
+
+        // Mark config entries as syncable
+        argstr.data = '';
+        var dataKey;
+        for ( var i = 0; i < dataKeys.length; i++ ) {
+            dataKey = dataKeys[i];
+            if ( extensionBranch.prefHasUserValue('cloudStorage.' + dataKey) === false ) {
+                extensionBranch.setComplexValue('cloudStorage.' + dataKey, iss, argstr);
+            }
+            syncBranch.setBoolPref(cloudBranchPath + '.' + dataKey, true);
+        }
+    };
+
+    var push = function(datakey, data, callback) {
+        var branch = Services.prefs.getBranch(cloudBranchPath + '.');
+        var bin = {
+            'source': options.deviceName || getDefaultDeviceName(),
+            'tstamp': Date.now(),
+            'data': data,
+            'size': 0
+        };
+        bin.size = JSON.stringify(bin).length;
+        argstr.data = JSON.stringify(bin);
+        branch.setComplexValue(datakey, iss, argstr);
+        if ( typeof callback === 'function' ) {
+            callback();
+        }
+    };
+
+    var pull = function(datakey, callback) {
+        var result = null;
+        var branch = Services.prefs.getBranch(cloudBranchPath + '.');
+        try {
+            var json = branch.getComplexValue(datakey, iss).data;
+            if ( typeof json === 'string' ) {
+                result = JSON.parse(json);
+            }
+        } catch(ex) {
+        }
+        callback(result);
+    };
+
+    var getOptions = function(callback) {
+        if ( typeof callback !== 'function' ) {
+            return;
+        }
+        options.defaultDeviceName = getDefaultDeviceName();
+        callback(options);
+    };
+
+    var setOptions = function(details, callback) {
+        if ( typeof details !== 'object' || details === null ) {
+            return;
+        }
+
+        var branch = Services.prefs.getBranch(extensionBranchPath + '.');
+
+        if ( typeof details.deviceName === 'string' ) {
+            argstr.data = details.deviceName;
+            branch.setComplexValue('deviceName', iss, argstr);
+            options.deviceName = details.deviceName;
+        }
+
+        getOptions(callback);
+    };
+
+    return {
+        start: start,
+        push: push,
+        pull: pull,
+        getOptions: getOptions,
+        setOptions: setOptions
+    };
+})();
+
+/******************************************************************************/
 /******************************************************************************/
 
 })();

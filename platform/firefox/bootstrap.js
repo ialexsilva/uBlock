@@ -1,7 +1,7 @@
 /*******************************************************************************
 
-    µBlock - a browser extension to block requests.
-    Copyright (C) 2014 The µBlock authors
+    uBlock Origin - a browser extension to block requests.
+    Copyright (C) 2014-2017 The uBlock Origin authors
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,25 +19,27 @@
     Home: https://github.com/gorhill/uBlock
 */
 
-/* global ADDON_UNINSTALL, APP_SHUTDOWN, APP_STARTUP */
+/* global ADDON_UNINSTALL, APP_SHUTDOWN */
 /* exported startup, shutdown, install, uninstall */
 
 'use strict';
 
 /******************************************************************************/
 
-const {classes: Cc} = Components;
+const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 
 // Accessing the context of the background page:
 // var win = Services.appShell.hiddenDOMWindow.document.querySelector('iframe[src*=ublock0]').contentWindow;
 
-let bgProcess;
+let windowlessBrowser = null;
+let windowlessBrowserPL = null;
+let bgProcess = null;
 let version;
 const hostName = 'ublock0';
 const restartListener = {
     get messageManager() {
         return Cc['@mozilla.org/parentprocessmessagemanager;1']
-            .getService(Components.interfaces.nsIMessageListenerManager);
+            .getService(Ci.nsIMessageListenerManager);
     },
 
     receiveMessage: function() {
@@ -48,75 +50,138 @@ const restartListener = {
 
 /******************************************************************************/
 
-function startup(data, reason) {
+function startup(data/*, reason*/) {
     if ( data !== undefined ) {
         version = data.version;
     }
 
-    let appShell = Cc['@mozilla.org/appshell/appShellService;1']
-        .getService(Components.interfaces.nsIAppShellService);
-
-    let onReady = function(e) {
-        if ( e ) {
-            this.removeEventListener(e.type, onReady);
-        }
-
-        let hiddenDoc = appShell.hiddenDOMWindow.document;
-
-        // https://github.com/gorhill/uBlock/issues/10
-        // Fixed by github.com/AlexVallat:
-        //   https://github.com/chrisaljoudi/uBlock/issues/1149
-        //   https://github.com/AlexVallat/uBlock/commit/e762a29d308caa46578cdc34a9be92c4ad5ecdd0
-        if ( hiddenDoc.readyState === 'loading' ) {
-            hiddenDoc.addEventListener('DOMContentLoaded', onReady);
-            return;
-        }
-
-        // https://github.com/gorhill/uBlock/issues/262
-        // To remove whatever suffix AMO adds to the version number.
-        var matches = version.match(/(?:\d+\.)+\d+/);
-        if ( matches !== null ) {
-            version = matches[0];
-        }
-
-        bgProcess = hiddenDoc.documentElement.appendChild(
-            hiddenDoc.createElementNS('http://www.w3.org/1999/xhtml', 'iframe')
-        );
-        bgProcess.setAttribute(
-            'src',
-            'chrome://' + hostName + '/content/background.html#' + version
-        );
-
-        restartListener.messageManager.addMessageListener(
-            hostName + '-restart',
-            restartListener
-        );
-    };
-
-    if ( reason !== APP_STARTUP ) {
-        onReady();
+    // Already started?
+    if ( bgProcess !== null ) {
         return;
     }
 
-    let ww = Cc['@mozilla.org/embedcomp/window-watcher;1']
-        .getService(Components.interfaces.nsIWindowWatcher);
+    waitForHiddenWindow();
+}
 
-    ww.registerNotification({
-        observe: function(win, topic) {
-            if ( topic !== 'domwindowopened' ) {
-                return;
+function createBgProcess(parentDocument) {
+    bgProcess = parentDocument.documentElement.appendChild(
+        parentDocument.createElementNS('http://www.w3.org/1999/xhtml', 'iframe')
+    );
+    bgProcess.setAttribute(
+        'src',
+        'chrome://' + hostName + '/content/background.html#' + version
+    );
+
+    // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/nsIMessageListenerManager#addMessageListener%28%29
+    // "If the same listener registers twice for the same message, the
+    // "second registration is ignored."
+    restartListener.messageManager.addMessageListener(
+        hostName + '-restart',
+        restartListener
+    );
+}
+
+function getWindowlessBrowserFrame(appShell) {
+    windowlessBrowser = appShell.createWindowlessBrowser(true);
+    windowlessBrowser.QueryInterface(Ci.nsIInterfaceRequestor);
+    let webProgress = windowlessBrowser.getInterface(Ci.nsIWebProgress);
+    let XPCOMUtils = Cu.import('resource://gre/modules/XPCOMUtils.jsm', null).XPCOMUtils;
+    windowlessBrowserPL = {
+        QueryInterface: XPCOMUtils.generateQI([
+            Ci.nsIWebProgressListener,
+            Ci.nsIWebProgressListener2,
+            Ci.nsISupportsWeakReference
+        ]),
+        onStateChange: function(wbp, request, stateFlags/*, status*/) {
+            if ( !request ) { return; }
+            if ( stateFlags & Ci.nsIWebProgressListener.STATE_STOP ) {
+                webProgress.removeProgressListener(windowlessBrowserPL);
+                windowlessBrowserPL = null;
+                createBgProcess(windowlessBrowser.document);
             }
-
-            try {
-                void appShell.hiddenDOMWindow;
-            } catch (ex) {
-                return;
-            }
-
-            ww.unregisterNotification(this);
-            win.addEventListener('DOMContentLoaded', onReady);
         }
-    });
+    };
+    webProgress.addProgressListener(windowlessBrowserPL, Ci.nsIWebProgress.NOTIFY_STATE_DOCUMENT);
+    windowlessBrowser.document.location = "data:application/vnd.mozilla.xul+xml;charset=utf-8,<window%20id='" + hostName + "-win'/>";
+}
+
+function waitForHiddenWindow() {
+    let appShell = Cc['@mozilla.org/appshell/appShellService;1']
+        .getService(Ci.nsIAppShellService);
+
+    let isReady = function() {
+        var hiddenDoc;
+
+        try {
+            hiddenDoc = appShell.hiddenDOMWindow &&
+                        appShell.hiddenDOMWindow.document;
+        } catch (ex) {
+        }
+
+        // Do not test against `loading`: it does appear `readyState` could be
+        // undefined if looked up too early.
+        if ( !hiddenDoc || hiddenDoc.readyState !== 'complete' ) {
+            return false;
+        }
+
+        // In theory, it should be possible to create a windowless browser
+        // immediately, without waiting for the hidden window to have loaded
+        // completely. However, in practice, on Windows this seems to lead
+        // to a broken Firefox appearance. To avoid this, we only create the
+        // windowless browser here. We'll use that rather than the hidden
+        // window for the actual background page (windowless browsers are
+        // also what the webextension implementation in Firefox uses for
+        // background pages).
+        let { Services } = Cu.import('resource://gre/modules/Services.jsm', null);
+        if ( Services.vc.compare(Services.appinfo.platformVersion, '27') >= 0 ) {
+            getWindowlessBrowserFrame(appShell);
+        } else {
+            createBgProcess(hiddenDoc);
+        }
+        return true;
+    };
+
+    if ( isReady() ) {
+        return;
+    }
+
+    // https://github.com/gorhill/uBlock/issues/749
+    // Poll until the proper environment is set up -- or give up eventually.
+    // We poll frequently early on but relax poll delay as time pass.
+
+    let tryDelay = 5;
+    let trySum = 0;
+    // https://trac.torproject.org/projects/tor/ticket/19438
+    // Try for a longer period.
+    let tryMax = 600011;
+    let timer = Cc['@mozilla.org/timer;1']
+        .createInstance(Ci.nsITimer);
+
+    let checkLater = function() {
+        trySum += tryDelay;
+        if ( trySum >= tryMax ) {
+            timer = null;
+            return;
+        }
+        timer.init(timerObserver, tryDelay, timer.TYPE_ONE_SHOT);
+        tryDelay *= 2;
+        if ( tryDelay > 503 ) {
+            tryDelay = 503;
+        }
+    };
+
+    var timerObserver = {
+        observe: function() {
+            timer.cancel();
+            if ( isReady() ) {
+                timer = null;
+            } else {
+                checkLater();
+            }
+        }
+    };
+
+    checkLater();
 }
 
 /******************************************************************************/
@@ -126,7 +191,19 @@ function shutdown(data, reason) {
         return;
     }
 
-    bgProcess.parentNode.removeChild(bgProcess);
+    if ( bgProcess !== null ) {
+        bgProcess.parentNode.removeChild(bgProcess);
+        bgProcess = null;
+    }
+
+    if ( windowlessBrowser !== null ) {
+        // close() does not exist for older versions of Firefox.
+        if ( typeof windowlessBrowser.close === 'function' ) {
+            windowlessBrowser.close();
+        }
+        windowlessBrowser = null;
+        windowlessBrowserPL = null;
+    }
 
     if ( data === undefined ) {
         return;
@@ -144,7 +221,7 @@ function shutdown(data, reason) {
 function install(/*aData, aReason*/) {
     // https://bugzil.la/719376
     Cc['@mozilla.org/intl/stringbundle;1']
-        .getService(Components.interfaces.nsIStringBundleService)
+        .getService(Ci.nsIStringBundleService)
         .flushBundles();
 }
 
@@ -165,8 +242,9 @@ function uninstall(aData, aReason) {
     // To cleanup vAPI.localStorage in vapi-common.js
     // As I get more familiar with FF API, will find out whetehr there was
     // a better way to do this.
-    Components.utils.import('resource://gre/modules/Services.jsm', null)
-        .Services.prefs.getBranch('extensions.' + hostName + '.').deleteBranch('');
+    Cu.import('resource://gre/modules/Services.jsm', null)
+      .Services.prefs.getBranch('extensions.' + hostName + '.')
+      .deleteBranch('');
 }
 
 /******************************************************************************/

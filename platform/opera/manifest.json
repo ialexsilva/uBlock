@@ -2,7 +2,7 @@
     "manifest_version": 2,
 
     "name": "uBlock Origin",
-    "version": "1.0.0.0",
+    "version": "1.9.15.101",
 
     "default_locale": "en",
     "description": "__MSG_extShortDesc__",
@@ -27,28 +27,20 @@
     "content_scripts": [
         {
             "matches": ["http://*/*", "https://*/*"],
-            "js": ["js/vapi-client.js", "js/contentscript-start.js"],
+            "js": ["js/vapi-client.js", "js/contentscript.js"],
             "run_at": "document_start",
             "all_frames": true
         },
         {
             "matches": ["http://*/*", "https://*/*"],
-            "js": ["js/contentscript-end.js"],
-            "run_at": "document_end",
-            "all_frames": true
-        },
-        {
-            "matches": [
-                "https://*.adblockplus.org/*",
-                "https://*.adblockplus.me/*",
-                "https://www.fanboy.co.nz/*"
-            ],
-            "js": ["js/subscriber.js"],
-            "run_at": "document_idle"
+            "js": ["js/scriptlets/subscriber.js"],
+            "run_at": "document_idle",
+            "all_frames": false
         }
     ],
     "incognito": "split",
-    "minimum_chrome_version": "22.0",
+    "minimum_chrome_version": "38.0",
+    "optional_permissions": [ "file:///*" ],
     "options_page": "dashboard.html",
     "permissions": [
         "contextMenus",

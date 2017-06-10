@@ -1,7 +1,7 @@
 /*******************************************************************************
 
     uBlock Origin - a browser extension to block requests.
-    Copyright (C) 2015 Raymond Hill
+    Copyright (C) 2015-2017 Raymond Hill
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,8 +19,7 @@
     Home: https://github.com/gorhill/uBlock
 */
 
-/* jshint boss: true */
-/* global vAPI, uDom */
+/* global uDom */
 
 /******************************************************************************/
 
@@ -31,7 +30,7 @@
 /******************************************************************************/
 
 var logger = self.logger = {};
-var messager = logger.messager = vAPI.messaging.channel('logger-ui.js');
+var messaging = vAPI.messaging;
 
 /******************************************************************************/
 
@@ -93,22 +92,12 @@ var uglyRequestTypes = {
 };
 
 var staticFilterTypes = {
-    'doc': 'other',
+    'beacon': 'other',
+    'doc': 'document',
     'css': 'stylesheet',
     'frame': 'subdocument',
+    'ping': 'other',
     'xhr': 'xmlhttprequest'
-};
-
-var timeOptions = {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-};
-
-var dateOptions = {
-    month: 'short',
-    day: '2-digit'
 };
 
 /******************************************************************************/
@@ -156,193 +145,6 @@ var nodeFromURL = function(url, re) {
 };
 
 var renderedURLTemplate = document.querySelector('#renderedURLTemplate > span');
-
-/******************************************************************************/
-
-// Pretty much same logic as found in:
-//   µBlock.staticNetFilteringEngine.filterStringFromCompiled
-//   µBlock.staticNetFilteringEngine.filterRegexFromCompiled
-
-var filterDecompiler = (function() {
-    var typeValToTypeName = {
-         1: 'stylesheet',
-         2: 'image',
-         3: 'object',
-         4: 'script',
-         5: 'xmlhttprequest',
-         6: 'subdocument',
-         7: 'font',
-         8: 'other',
-        12: 'document',
-        13: 'elemhide',
-        14: 'inline-script',
-        15: 'popup'
-    };
-
-    var toString = function(compiled) {
-        var opts = [];
-        var vfields = compiled.split('\v');
-        var filter = '';
-        var bits = parseInt(vfields[0], 16) | 0;
-
-        if ( bits & 0x01 ) {
-            filter += '@@';
-        }
-
-        var fid = vfields[1] === '.' ? '.' : vfields[2];
-        var tfields = fid !== '.' ? vfields[3].split('\t') : [];
-        var tfield0 = tfields[0];
-
-        switch ( fid ) {
-        case '.':
-            filter += '||' + vfields[2] + '^';
-            break;
-        case 'a':
-        case 'ah':
-        case '0a':
-        case '0ah':
-        case '1a':
-        case '1ah':
-        case '_':
-        case '_h':
-            filter += tfield0;
-            // If the filter resemble a regex, add a trailing `*` as is
-            // customary to prevent ambiguity in logger.
-            if ( tfield0.charAt(0) === '/' && tfield0.slice(-1) === '/' ) {
-                filter += '*';
-            }
-            break;
-        case '|a':
-        case '|ah':
-            filter += '|' + tfield0;
-            break;
-        case 'a|':
-        case 'a|h':
-            filter += tfield0 + '|';
-            break;
-        case '||a':
-        case '||ah':
-        case '||_':
-        case '||_h':
-            filter += '||' + tfield0;
-            break;
-        case '//':
-        case '//h':
-            filter += '/' + tfield0 + '/';
-            break;
-        // https://github.com/gorhill/uBlock/issues/465
-        // Unexpected: return the raw compiled representation instead of a
-        // blank string.
-        default:
-            return compiled.replace(/\s+/g, ' ');
-        }
-
-        // Domain option?
-        switch ( fid ) {
-        case '0ah':
-        case '1ah':
-        case '|ah':
-        case 'a|h':
-        case '||ah':
-        case '||_h':
-        case '//h':
-            opts.push('domain=' + tfields[1]);
-            break;
-        case 'ah':
-        case '_h':
-            opts.push('domain=' + tfields[2]);
-            break;
-        default:
-            break;
-        }
-
-        // Filter options
-        // Importance
-        if ( bits & 0x02 ) {
-            opts.push('important');
-        }
-        // Party
-        if ( bits & 0x08 ) {
-            opts.push('third-party');
-        } else if ( bits & 0x04 ) {
-            opts.push('first-party');
-        }
-        // Type
-        var typeVal = bits >>> 4 & 0x0F;
-        if ( typeVal ) {
-            opts.push(typeValToTypeName[typeVal]);
-            // Because of the way `elemhide` is implemented
-            if ( typeVal === 13 ) {
-                filter = '@@' + filter;
-            }
-        }
-        if ( opts.length !== 0 ) {
-            filter += '$' + opts.join(',');
-        }
-
-        return filter;
-    };
-
-    var reEscape = /[.+?^${}()|[\]\\]/g;
-    var reWildcards = /\*+/g;
-
-    var toRegex = function(compiled) {
-        var vfields = compiled.split('\v');
-        var fid = vfields[1] === '.' ? '.' : vfields[2];
-        var tfields = fid !== '.' ? vfields[3].split('\t') : [];
-        var reStr;
-
-        switch ( fid ) {
-        case '.':
-            reStr = vfields[2].replace(reEscape, '\\$&');
-            break;
-        case 'a':
-        case 'ah':
-        case '0a':
-        case '0ah':
-        case '1a':
-        case '1ah':
-        case '_':
-        case '_h':
-        case '||a':
-        case '||ah':
-        case '||_':
-        case '||_h':
-            reStr = tfields[0]
-                        .replace(reEscape, '\\$&')
-                        .replace(reWildcards, '.*');
-            break;
-        case '|a':
-        case '|ah':
-            reStr = '^' + tfields[0].
-                        replace(reEscape, '\\$&')
-                        .replace(reWildcards, '.*');
-            break;
-        case 'a|':
-        case 'a|h':
-            reStr = tfields[0]
-                        .replace(reEscape, '\\$&')
-                        .replace(reWildcards, '.*') + '$';
-            break;
-        case '//':
-        case '//h':
-            reStr = tfields[0];
-            break;
-        default:
-            break;
-        }
-
-        if ( reStr === undefined) {
-            return null;
-        }
-        return new RegExp(reStr, 'gi');
-    };
-
-    return {
-        toString: toString,
-        toRegex: toRegex
-    };
-})();
 
 /******************************************************************************/
 
@@ -400,7 +202,7 @@ var createRow = function(layout) {
         td.setAttribute('colspan', span);
     }
     index += 1;
-    while ( td = tr.cells[index] ) {
+    while ( (td = tr.cells[index]) ) {
         tdJunkyard.push(tr.removeChild(td));
     }
     return tr;
@@ -412,6 +214,12 @@ var createHiddenTextNode = function(text) {
     var node = hiddenTemplate.cloneNode(true);
     node.textContent = text;
     return node;
+};
+
+/******************************************************************************/
+
+var padTo2 = function(v) {
+    return v < 10 ? '0' + v : v;
 };
 
 /******************************************************************************/
@@ -430,7 +238,7 @@ var createGap = function(tabId, url) {
 
 var renderNetLogEntry = function(tr, entry) {
     var trcl = tr.classList;
-    var filter = entry.d0;
+    var filter = entry.d0 || undefined;
     var type = entry.d1;
     var url = entry.d2;
     var td;
@@ -451,49 +259,50 @@ var renderNetLogEntry = function(tr, entry) {
         tr.setAttribute('data-hn-frame', entry.d4);
     }
 
-    var filterCat = filter.slice(0, 3);
-    if ( filterCat.charAt(2) === ':' ) {
-        trcl.add(filterCat.slice(0, 2));
+    var filteringType;
+    if ( filter !== undefined && typeof filter.source === 'string' ) {
+        filteringType = filter.source;
+        trcl.add(filteringType);
     }
 
-    var filteringType = filterCat.charAt(0);
     td = tr.cells[2];
-    if ( filter !== '' ) {
-        filter = filter.slice(3);
-        if ( filteringType === 's' ) {
-            td.textContent = filterDecompiler.toString(filter);
+    if ( filter !== undefined ) {
+        if ( filteringType === 'static' ) {
+            td.textContent = filter.raw;
             trcl.add('canLookup');
-            tr.setAttribute('data-filter', filter);
-        } else if ( filteringType === 'c' ) {
-            td.textContent = filter;
+            tr.setAttribute('data-filter', filter.compiled);
+        } else if ( filteringType === 'cosmetic' ) {
+            td.textContent = filter.raw;
             trcl.add('canLookup');
         } else {
-            td.textContent = filter;
+            td.textContent = filter.raw;
         }
     }
 
     td = tr.cells[3];
-    var filteringOp = filterCat.charAt(1);
-    if ( filteringOp === 'b' ) {
-        trcl.add('blocked');
-        td.textContent = '--';
-    } else if ( filteringOp === 'a' ) {
-        trcl.add('allowed');
-        td.textContent = '++';
-    } else if ( filteringOp === 'n' ) {
-        trcl.add('nooped');
-        td.textContent = '**';
-    } else {
-        td.textContent = '';
+    if ( filter !== undefined ) {
+        if ( filter.result === 1 ) {
+            trcl.add('blocked');
+            td.textContent = '--';
+        } else if ( filter.result === 2 ) {
+            trcl.add('allowed');
+            td.textContent = '++';
+        } else if ( filter.result === 3 ) {
+            trcl.add('nooped');
+            td.textContent = '**';
+        } else if ( filter.source === 'redirect' ) {
+            trcl.add('redirect');
+            td.textContent = '<<';
+        }
     }
 
     tr.cells[4].textContent = (prettyRequestTypes[type] || type);
 
     var re = null;
-    if ( filteringType === 's' ) {
-        re = filterDecompiler.toRegex(filter);
-    } else if ( filteringType === 'l' ) {
-        re = regexFromURLFilteringResult(filter);
+    if ( filteringType === 'static' ) {
+        re = new RegExp(filter.regex, 'gi');
+    } else if ( filteringType === 'dynamicUrl' ) {
+        re = regexFromURLFilteringResult(filter.rule.join(' '));
     }
     tr.cells[5].appendChild(nodeFromURL(url, re));
 };
@@ -513,6 +322,7 @@ var renderLogEntry = function(entry) {
 
     case 'cosmetic':
     case 'net':
+    case 'redirect':
         tr = createRow('1111');
         renderNetLogEntry(tr, entry);
         break;
@@ -524,9 +334,11 @@ var renderLogEntry = function(entry) {
     }
 
     // Fields common to all rows.
-    var time = new Date(entry.tstamp);
-    tr.cells[0].textContent = time.toLocaleTimeString('fullwide', timeOptions);
-    tr.cells[0].title = time.toLocaleDateString('fullwide', dateOptions);
+    var time = logDate;
+    time.setTime(entry.tstamp - logDateTimezoneOffset);
+    tr.cells[0].textContent = padTo2(time.getUTCHours()) + ':' +
+                              padTo2(time.getUTCMinutes()) + ':' +
+                              padTo2(time.getSeconds());
 
     if ( entry.tab ) {
         tr.classList.add('tab');
@@ -540,9 +352,13 @@ var renderLogEntry = function(entry) {
     }
 
     rowFilterer.filterOne(tr, true);
-
     tbody.insertBefore(tr, tbody.firstChild);
+    return tr;
 };
+
+// Reuse date objects.
+var logDate = new Date(),
+    logDateTimezoneOffset = logDate.getTimezoneOffset() * 60000;
 
 /******************************************************************************/
 
@@ -559,14 +375,16 @@ var renderLogEntries = function(response) {
 
     var tabIds = response.tabIds;
     var n = entries.length;
-    var entry;
+    var entry, tr;
     for ( var i = 0; i < n; i++ ) {
         entry = entries[i];
-        // Unlikely, but it may happen
+        tr = renderLogEntry(entries[i]);
+        // https://github.com/gorhill/uBlock/issues/1613#issuecomment-217637122
+        // Unlikely, but it may happen: mark as void if associated tab no
+        // longer exist.
         if ( entry.tab && tabIds.hasOwnProperty(entry.tab) === false ) {
-            continue;
+            tr.classList.remove('canMtx');
         }
-        renderLogEntry(entries[i]);
     }
 
     // Prevent logger from growing infinitely and eating all memory. For
@@ -629,7 +447,8 @@ var synchronizeTabIds = function(newTabIds) {
             option = document.createElement('option');
             select.appendChild(option);
         }
-        option.textContent = newTabIds[tabId];
+        // Truncate too long labels.
+        option.textContent = newTabIds[tabId].slice(0, 80);
         option.value = classNameFromTabId(tabId);
         if ( option.value === selectValue ) {
             select.selectedIndex = j;
@@ -688,6 +507,10 @@ var onLogBufferRead = function(response) {
         allTabIdsToken = response.tabIdsToken;
     }
 
+    // https://github.com/gorhill/uBlock/issues/507
+    // Ensure tab selector is in sync with URL hash
+    pageSelectorFromURLHash();
+
     renderLogEntries(response);
 
     if ( rowVoided ) {
@@ -713,29 +536,58 @@ var onLogBufferRead = function(response) {
 // require a bit more code to ensure no multi time out events.
 
 var readLogBuffer = function() {
-    messager.send({ what: 'readAll' }, onLogBufferRead);
+    messaging.send('loggerUI', { what: 'readAll' }, onLogBufferRead);
 };
 
 /******************************************************************************/
 
 var pageSelectorChanged = function() {
-    var style = uDom.nodeFromId('tabFilterer');
-    var tabClass = uDom.nodeFromId('pageSelector').value;
-    var sheet = style.sheet;
-    while ( sheet.cssRules.length !== 0 )  {
-        sheet.deleteRule(0);
-    }
-    if ( tabClass !== '' ) {
-        sheet.insertRule(
-            '#netInspector tr:not(.' + tabClass + ') { display: none; }',
-            0
-        );
-    }
-    uDom('.needtab').toggleClass(
-        'disabled',
-        tabClass === '' || tabClass === 'tab_bts'
-    );
+    window.location.replace('#' + uDom.nodeFromId('pageSelector').value);
+    pageSelectorFromURLHash();
 };
+
+/******************************************************************************/
+
+var pageSelectorFromURLHash = (function() {
+    var lastHash = '';
+
+    return function() {
+        var hash = window.location.hash;
+        if ( hash === lastHash ) {
+            return;
+        }
+
+        var tabClass = hash.slice(1);
+        var select = uDom.nodeFromId('pageSelector');
+        var option = select.querySelector('option[value="' + tabClass + '"]');
+        if ( option === null ) {
+            hash = window.location.hash = '';
+            tabClass = '';
+            option = select.options[0];
+        }
+
+        lastHash = hash;
+
+        select.selectedIndex = option.index;
+        select.value = option.value;
+
+        var style = uDom.nodeFromId('tabFilterer');
+        var sheet = style.sheet;
+        while ( sheet.cssRules.length !== 0 )  {
+            sheet.deleteRule(0);
+        }
+        if ( tabClass !== '' ) {
+            sheet.insertRule(
+                '#netInspector tr:not(.' + tabClass + ') { display: none; }',
+                0
+            );
+        }
+        uDom('.needtab').toggleClass(
+            'disabled',
+            tabClass === '' || tabClass === 'tab_bts'
+        );
+    };
+})();
 
 /******************************************************************************/
 
@@ -745,7 +597,7 @@ var reloadTab = function() {
     if ( tabId === 'bts' || tabId === '' ) {
         return;
     }
-    messager.send({ what: 'reloadTab', tabId: tabId });
+    messaging.send('loggerUI', { what: 'reloadTab', tabId: tabId });
 };
 
 /******************************************************************************/
@@ -766,11 +618,14 @@ var onMaxEntriesChanged = function() {
 
     input.value = maxEntries.toString(10);
 
-    messager.send({
-        what: 'userSettings',
-        name: 'requestLogMaxEntries',
-        value: maxEntries
-    });
+    messaging.send(
+        'loggerUI',
+        {
+            what: 'userSettings',
+            name: 'requestLogMaxEntries',
+            value: maxEntries
+        }
+    );
 
     truncateLog(maxEntries);
 };
@@ -833,12 +688,16 @@ var netFilteringManager = (function() {
     };
 
     var colorize = function() {
-        messager.send({
-            what: 'getURLFilteringData',
-            context: selectValue('select.dynamic.origin'),
-            urls: targetURLs,
-            type: uglyTypeFromSelector('dynamic')
-        }, onColorsReady);
+        messaging.send(
+            'loggerUI',
+            {
+                what: 'getURLFilteringData',
+                context: selectValue('select.dynamic.origin'),
+                urls: targetURLs,
+                type: uglyTypeFromSelector('dynamic')
+            },
+            onColorsReady
+        );
     };
 
     var parseStaticInputs = function() {
@@ -919,10 +778,14 @@ var netFilteringManager = (function() {
             createdStaticFilters[value] = true;
             if ( value !== '' ) {
                 var d = new Date();
-                messager.send({
-                    what: 'createUserFilter',
-                    filters: '! ' + d.toLocaleString() + ' ' + targetPageDomain + '\n' + value
-                });
+                messaging.send(
+                    'loggerUI',
+                    {
+                        what: 'createUserFilter',
+                        pageDomain: targetPageDomain,
+                        filters: '! ' + d.toLocaleString() + ' ' + targetPageDomain + '\n' + value
+                    }
+                );
             }
             updateWidgets();
             return;
@@ -930,12 +793,16 @@ var netFilteringManager = (function() {
 
         // Save url filtering rule(s)
         if ( target.id === 'saveRules' ) {
-            messager.send({
-                what: 'saveURLFilteringRules',
-                context: selectValue('select.dynamic.origin'),
-                urls: targetURLs,
-                type: uglyTypeFromSelector('dynamic')
-            }, colorize);
+                messaging.send(
+                'loggerUI',
+                {
+                    what: 'saveURLFilteringRules',
+                    context: selectValue('select.dynamic.origin'),
+                    urls: targetURLs,
+                    type: uglyTypeFromSelector('dynamic')
+                },
+                colorize
+            );
             return;
         }
 
@@ -943,73 +810,95 @@ var netFilteringManager = (function() {
 
         // Remove url filtering rule
         if ( tcl.contains('action') ) {
-            messager.send({
-                what: 'setURLFilteringRule',
-                context: selectValue('select.dynamic.origin'),
-                url: target.getAttribute('data-url'),
-                type: uglyTypeFromSelector('dynamic'),
-                action: 0,
-                persist: persist
-            }, colorize);
+            messaging.send(
+                'loggerUI',
+                {
+                    what: 'setURLFilteringRule',
+                    context: selectValue('select.dynamic.origin'),
+                    url: target.getAttribute('data-url'),
+                    type: uglyTypeFromSelector('dynamic'),
+                    action: 0,
+                    persist: persist
+                },
+                colorize
+            );
             return;
         }
 
         // add "allow" url filtering rule
         if ( tcl.contains('allow') ) {
-            messager.send({
-                what: 'setURLFilteringRule',
-                context: selectValue('select.dynamic.origin'),
-                url: target.parentNode.getAttribute('data-url'),
-                type: uglyTypeFromSelector('dynamic'),
-                action: 2,
-                persist: persist
-            }, colorize);
+            messaging.send(
+                'loggerUI',
+                {
+                    what: 'setURLFilteringRule',
+                    context: selectValue('select.dynamic.origin'),
+                    url: target.parentNode.getAttribute('data-url'),
+                    type: uglyTypeFromSelector('dynamic'),
+                    action: 2,
+                    persist: persist
+                },
+                colorize
+            );
             return;
         }
 
         // add "block" url filtering rule
         if ( tcl.contains('noop') ) {
-            messager.send({
-                what: 'setURLFilteringRule',
-                context: selectValue('select.dynamic.origin'),
-                url: target.parentNode.getAttribute('data-url'),
-                type: uglyTypeFromSelector('dynamic'),
-                action: 3,
-                persist: persist
-            }, colorize);
+            messaging.send(
+                'loggerUI',
+                {
+                    what: 'setURLFilteringRule',
+                    context: selectValue('select.dynamic.origin'),
+                    url: target.parentNode.getAttribute('data-url'),
+                    type: uglyTypeFromSelector('dynamic'),
+                    action: 3,
+                    persist: persist
+                },
+                colorize
+            );
             return;
         }
 
         // add "block" url filtering rule
         if ( tcl.contains('block') ) {
-            messager.send({
-                what: 'setURLFilteringRule',
-                context: selectValue('select.dynamic.origin'),
-                url: target.parentNode.getAttribute('data-url'),
-                type: uglyTypeFromSelector('dynamic'),
-                action: 1,
-                persist: persist
-            }, colorize);
+            messaging.send(
+                'loggerUI',
+                {
+                    what: 'setURLFilteringRule',
+                    context: selectValue('select.dynamic.origin'),
+                    url: target.parentNode.getAttribute('data-url'),
+                    type: uglyTypeFromSelector('dynamic'),
+                    action: 1,
+                    persist: persist
+                },
+                colorize
+            );
             return;
         }
 
         // Force a reload of the tab
         if ( tcl.contains('reload') ) {
-            messager.send({
-                what: 'reloadTab',
-                tabId: targetTabId
-            });
+            messaging.send(
+                'loggerUI',
+                {
+                    what: 'reloadTab',
+                    tabId: targetTabId
+                }
+            );
             return;
         }
 
         // Hightlight corresponding element in target web page
         if ( tcl.contains('picker') ) {
-            messager.send({
-                what: 'launchElementPicker',
-                tabId: targetTabId,
-                targetURL: 'img\t' + targetURLs[0],
-                select: true
-            });
+            messaging.send(
+                'loggerUI',
+                {
+                    what: 'launchElementPicker',
+                    tabId: targetTabId,
+                    targetURL: 'img\t' + targetURLs[0],
+                    select: true
+                }
+            );
             return;
         }
     };
@@ -1055,6 +944,17 @@ var netFilteringManager = (function() {
             return;
         }
         container.appendChild(preview);
+    };
+
+    // https://github.com/gorhill/uBlock/issues/1511
+    var shortenLongString = function(url, max) {
+        var urlLen = url.length;
+        if ( urlLen <= max ) {
+            return url;
+        }
+        var n = urlLen - max - 1;
+        var i = (urlLen - n) / 2 | 0;
+        return url.slice(0, i) + '…' + url.slice(i + n);
     };
 
     // Build list of candidate URLs
@@ -1109,7 +1009,7 @@ var netFilteringManager = (function() {
             url = targetURLs[i];
             menuEntry = menuEntryTemplate.cloneNode(true);
             menuEntry.cells[0].children[0].setAttribute('data-url', url);
-            menuEntry.cells[1].textContent = url;
+            menuEntry.cells[1].textContent = shortenLongString(url, 128);
             tbody.appendChild(menuEntry);
         }
 
@@ -1192,7 +1092,7 @@ var netFilteringManager = (function() {
                     value = targetURLs[i].replace(/^[a-z]+:\/\//, '');
                     option = document.createElement('option');
                     option.setAttribute('value', value);
-                    option.textContent = value;
+                    option.textContent = shortenLongString(value, 128);
                     select.appendChild(option);
                 }
                 nodes.push(select);
@@ -1262,10 +1162,14 @@ var netFilteringManager = (function() {
         targetFrameHostname = targetRow.getAttribute('data-hn-frame') || '';
 
         // We need the root domain names for best user experience.
-        messager.send({
-            what: 'getDomainNames',
-            targets: [targetURLs[0], targetPageHostname, targetFrameHostname]
-        }, fillDialog);
+        messaging.send(
+            'loggerUI',
+            {
+                what: 'getDomainNames',
+                targets: [targetURLs[0], targetPageHostname, targetFrameHostname]
+            },
+            fillDialog
+        );
     };
 
     var toggleOff = function() {
@@ -1381,17 +1285,25 @@ var reverseLookupManager = (function() {
         }
 
         if ( row.classList.contains('cat_net') ) {
-            messager.send({
-                what: 'listsFromNetFilter',
-                compiledFilter: row.getAttribute('data-filter') || '',
-                rawFilter: rawFilter
-            }, reverseLookupDone);
+            messaging.send(
+                'loggerUI',
+                {
+                    what: 'listsFromNetFilter',
+                    compiledFilter: row.getAttribute('data-filter') || '',
+                    rawFilter: rawFilter
+                },
+                reverseLookupDone
+            );
         } else if ( row.classList.contains('cat_cosmetic') ) {
-            messager.send({
-                what: 'listsFromCosmeticFilter',
-                hostname: row.getAttribute('data-hn-frame') || '',
-                rawFilter: rawFilter,
-            }, reverseLookupDone);
+            messaging.send(
+                'loggerUI',
+                {
+                    what: 'listsFromCosmeticFilter',
+                    hostname: row.getAttribute('data-hn-frame') || '',
+                    rawFilter: rawFilter,
+                },
+                reverseLookupDone
+            );
         }
     };
 
@@ -1720,25 +1632,21 @@ var popupManager = (function() {
 
 /******************************************************************************/
 
-uDom.onLoad(function() {
-    readLogBuffer();
+readLogBuffer();
 
-    uDom('#pageSelector').on('change', pageSelectorChanged);
-    uDom('#refresh').on('click', reloadTab);
-    uDom('#showdom').on('click', toggleInspectors);
+uDom('#pageSelector').on('change', pageSelectorChanged);
+uDom('#refresh').on('click', reloadTab);
+uDom('#showdom').on('click', toggleInspectors);
 
-    uDom('#compactViewToggler').on('click', toggleCompactView);
-    uDom('#clean').on('click', cleanBuffer);
-    uDom('#clear').on('click', clearBuffer);
-    uDom('#maxEntries').on('change', onMaxEntriesChanged);
-    uDom('#netInspector table').on('click', 'tr.canMtx > td:nth-of-type(2)', popupManager.toggleOn);
-    uDom('#netInspector').on('click', 'tr.canLookup > td:nth-of-type(3)', reverseLookupManager.toggleOn);
-    uDom('#netInspector').on('click', 'tr.cat_net > td:nth-of-type(4)', netFilteringManager.toggleOn);
+uDom('#compactViewToggler').on('click', toggleCompactView);
+uDom('#clean').on('click', cleanBuffer);
+uDom('#clear').on('click', clearBuffer);
+uDom('#maxEntries').on('change', onMaxEntriesChanged);
+uDom('#netInspector table').on('click', 'tr.canMtx > td:nth-of-type(2)', popupManager.toggleOn);
+uDom('#netInspector').on('click', 'tr.canLookup > td:nth-of-type(3)', reverseLookupManager.toggleOn);
+uDom('#netInspector').on('click', 'tr.cat_net > td:nth-of-type(4)', netFilteringManager.toggleOn);
 
-    // https://github.com/gorhill/uBlock/issues/404
-    // Ensure page state is in sync with the state of its various widgets.
-    pageSelectorChanged();
-});
+window.addEventListener('hashchange', pageSelectorFromURLHash);
 
 /******************************************************************************/
 

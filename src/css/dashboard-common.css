@@ -2,6 +2,11 @@ body {
     margin: 0;
     padding: 0 0.5em 0.5em 0.5em;
     }
+@media screen and (max-device-width: 960px) {
+    body {
+        zoom: 1.4;
+        }
+    }
 h2, h3 {
     margin: 1em 0;
     font-family: sans-serif;
@@ -15,6 +20,16 @@ h3 {
 a {
     text-decoration: none;
     }
+a.info {
+    color: black;
+    opacity: 0.3;
+    }
+a.info:hover {
+    opacity: 0.9
+    }
+a.info.important {
+    color: orangered;
+    }
 button {
     padding: 0.33em;
     }
@@ -24,9 +39,18 @@ div > p:first-child {
 div > p:last-child {
     margin-bottom: 0;
     }
-
+input[type="number"] {
+    width: 5em;
+    }
+input[type="checkbox"][disabled] + label {
+    opacity: 0.4;
+    }
 .para {
     width: 40em;
+    }
+.synopsis {
+    font-size: small;
+    opacity: 0.8;
     }
 .whatisthis {
     margin: 0 0 0 8px;
@@ -49,6 +73,7 @@ div > p:last-child {
     border: 1px dotted black;
     background-color: #F8F8F8;
     font-size: 13px;
+    white-space: pre-line;
     }
 .whatisthis-expandable > p {
     margin-top: 1em;

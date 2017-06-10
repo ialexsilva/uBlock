@@ -1,7 +1,7 @@
 /*******************************************************************************
 
-    uBlock - a browser extension to block requests.
-    Copyright (C) 2015 Raymond Hill
+    uBlock Origin - a browser extension to block requests.
+    Copyright (C) 2015-2017 Raymond Hill
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,18 +19,16 @@
     Home: https://github.com/gorhill/uBlock
 */
 
-/* global µBlock */
+'use strict';
 
 /******************************************************************************/
 
 µBlock.staticFilteringReverseLookup = (function() {
 
-'use strict';
-
 /******************************************************************************/
 
 var worker = null;
-var workerTTL = 11 * 60 * 1000;
+var workerTTL = 5 * 60 * 1000;
 var workerTTLTimer = null;
 var needLists = true;
 var messageId = 1;
@@ -77,16 +75,21 @@ var initWorker = function(callback) {
     var countdown = 0;
 
     var onListLoaded = function(details) {
-        var entry = entries[details.path];
+        var entry = entries[details.assetKey];
+
+        // https://github.com/gorhill/uBlock/issues/536
+        // Use assetKey when there is no filter list title.
+
         worker.postMessage({
             what: 'setList',
             details: {
-                path: details.path,
-                title: entry.title || '',
+                assetKey: details.assetKey,
+                title: entry.title || details.assetKey,
                 supportURL: entry.supportURL,
                 content: details.content
             }
         });
+
         countdown -= 1;
         if ( countdown === 0 ) {
             callback();
@@ -94,18 +97,18 @@ var initWorker = function(callback) {
     };
 
     var µb = µBlock;
-    var path, entry;
+    var listKey, entry;
 
-    for ( path in µb.remoteBlacklists ) {
-        if ( µb.remoteBlacklists.hasOwnProperty(path) === false ) {
+    for ( listKey in µb.availableFilterLists ) {
+        if ( µb.availableFilterLists.hasOwnProperty(listKey) === false ) {
             continue;
         }
-        entry = µb.remoteBlacklists[path];
-        if ( entry.off === true ) {
-            continue;
-        }
-        entries[path] = {
-            title: path !== µb.userFiltersPath ? entry.title : vAPI.i18n('1pPageName'),
+        entry = µb.availableFilterLists[listKey];
+        if ( entry.off === true ) { continue; }
+        entries[listKey] = {
+            title: listKey !== µb.userFiltersPath ?
+                entry.title :
+                vAPI.i18n('1pPageName'),
             supportURL: entry.supportURL || ''
         };
         countdown += 1;
@@ -116,8 +119,8 @@ var initWorker = function(callback) {
         return;
     }
 
-    for ( path in entries ) {
-        µb.getCompiledFilterList(path, onListLoaded);
+    for ( listKey in entries ) {
+        µb.getCompiledFilterList(listKey, onListLoaded);
     }
 };
 

@@ -1,7 +1,7 @@
 /*******************************************************************************
 
-    uBlock - a browser extension to block requests.
-    Copyright (C) 2015 Raymond Hill
+    uBlock Origin - a browser extension to block requests.
+    Copyright (C) 2015-2017 Raymond Hill
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,78 +19,71 @@
     Home: https://github.com/gorhill/uBlock
 */
 
-/* global vAPI, HTMLDocument */
+'use strict';
 
 /******************************************************************************/
 
 (function() {
 
-'use strict';
-
 /******************************************************************************/
 
-// https://github.com/gorhill/uBlock/issues/464
-if ( document instanceof HTMLDocument === false ) {
+if ( typeof vAPI !== 'object' || !vAPI.domFilterer ) {
     return;
 }
 
-// This can happen
-if ( typeof vAPI !== 'object' ) {
-    return;
-}
+var loggedSelectors = vAPI.loggedSelectors || {},
+    matchedSelectors = [];
 
-/******************************************************************************/
 
-var loggedSelectors = vAPI.loggedSelectors || {};
-
-var injectedSelectors = [];
-var reProperties = /\s*\{[^}]+\}\s*/;
-var i;
-var styles = vAPI.styles || [];
-
-i = styles.length;
-while ( i-- ) {
-    injectedSelectors = injectedSelectors.concat(styles[i].textContent.replace(reProperties, '').split(/\s*,\n\s*/));
-}
-
-if ( injectedSelectors.length === 0 ) {
-    return;
-}
-
-var matchedSelectors = [];
-var selector;
-
-i = injectedSelectors.length;
-while ( i-- ) {
-    selector = injectedSelectors[i];
-    if ( loggedSelectors.hasOwnProperty(selector) ) {
-        continue;
+var evaluateSelector = function(selector) {
+    if (
+        loggedSelectors.hasOwnProperty(selector) === false &&
+        document.querySelector(selector) !== null
+    ) {
+        loggedSelectors[selector] = true;
+        matchedSelectors.push(selector);
     }
-    if ( document.querySelector(selector) === null ) {
-        continue;
+};
+
+// Simple CSS selector-based cosmetic filters.
+vAPI.domFilterer.simpleHideSelectors.entries.forEach(evaluateSelector);
+
+// Complex CSS selector-based cosmetic filters.
+vAPI.domFilterer.complexHideSelectors.entries.forEach(evaluateSelector);
+
+// Non-querySelector-able filters.
+vAPI.domFilterer.nqsSelectors.forEach(function(filter) {
+    if ( loggedSelectors.hasOwnProperty(filter) === false ) {
+        loggedSelectors[filter] = true;
+        matchedSelectors.push(filter);
     }
-    loggedSelectors[selector] = true;
-    matchedSelectors.push(selector);
-}
+});
+
+// Procedural cosmetic filters.
+vAPI.domFilterer.proceduralSelectors.entries.forEach(function(pfilter) {
+    if (
+        loggedSelectors.hasOwnProperty(pfilter.raw) === false &&
+        pfilter.exec().length !== 0
+    ) {
+        loggedSelectors[pfilter.raw] = true;
+        matchedSelectors.push(pfilter.raw);
+    }
+});
 
 vAPI.loggedSelectors = loggedSelectors;
 
-/******************************************************************************/
-
-var localMessager = vAPI.messaging.channel('scriptlets');
-
-localMessager.send({
-    what: 'logCosmeticFilteringData',
-    frameURL: window.location.href,
-    frameHostname: window.location.hostname,
-    matchedSelectors: matchedSelectors
-}, function() {
-    localMessager.close();
-    localMessager = null;
-});
+if ( matchedSelectors.length ) {
+    vAPI.messaging.send(
+        'scriptlets',
+        {
+            what: 'logCosmeticFilteringData',
+            frameURL: window.location.href,
+            frameHostname: window.location.hostname,
+            matchedSelectors: matchedSelectors
+        }
+    );
+}
 
 /******************************************************************************/
 
 })();
-
-/******************************************************************************/

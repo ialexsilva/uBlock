@@ -1,7 +1,7 @@
 /*******************************************************************************
 
-    µBlock - a browser extension to block requests.
-    Copyright (C) 2014 Raymond Hill
+    uBlock Origin - a browser extension to block requests.
+    Copyright (C) 2014-2016 Raymond Hill
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,15 +19,15 @@
     Home: https://github.com/gorhill/uBlock
 */
 
-/* global self, vAPI, CSS */
+/* global CSS */
+
+'use strict';
 
 /******************************************************************************/
 /******************************************************************************/
 
 /*! http://mths.be/cssescape v0.2.1 by @mathias | MIT license */
 ;(function(root) {
-
-    'use strict';
 
     if (!root.CSS) {
         root.CSS = {};
@@ -66,16 +66,16 @@
                 if (
                     // If the character is in the range [\1-\1F] (U+0001 to U+001F) or is
                     // U+007F, […]
-                    (codeUnit >= 0x0001 && codeUnit <= 0x001F) || codeUnit == 0x007F ||
+                    (codeUnit >= 0x0001 && codeUnit <= 0x001F) || codeUnit === 0x007F ||
                     // If the character is the first character and is in the range [0-9]
                     // (U+0030 to U+0039), […]
                     (index === 0 && codeUnit >= 0x0030 && codeUnit <= 0x0039) ||
                     // If the character is the second character and is in the range [0-9]
                     // (U+0030 to U+0039) and the first character is a `-` (U+002D), […]
                     (
-                        index == 1 &&
+                        index === 1 &&
                         codeUnit >= 0x0030 && codeUnit <= 0x0039 &&
-                        firstCodeUnit == 0x002D
+                        firstCodeUnit === 0x002D
                     )
                 ) {
                     // http://dev.w3.org/csswg/cssom/#escape-a-character-as-code-point
@@ -89,8 +89,8 @@
                 // U+005A), or [a-z] (U+0061 to U+007A), […]
                 if (
                     codeUnit >= 0x0080 ||
-                    codeUnit == 0x002D ||
-                    codeUnit == 0x005F ||
+                    codeUnit === 0x002D ||
+                    codeUnit === 0x005F ||
                     codeUnit >= 0x0030 && codeUnit <= 0x0039 ||
                     codeUnit >= 0x0041 && codeUnit <= 0x005A ||
                     codeUnit >= 0x0061 && codeUnit <= 0x007A
@@ -116,9 +116,11 @@
 
 (function() {
 
-'use strict';
-
 /******************************************************************************/
+
+if ( typeof vAPI !== 'object' ) {
+    return;
+}
 
 // don't run in frames
 if ( window.top !== window ) {
@@ -126,13 +128,11 @@ if ( window.top !== window ) {
 }
 
 var pickerRoot = document.getElementById(vAPI.sessionId);
-
 if ( pickerRoot ) {
     return;
 }
-
-var localMessager = vAPI.messaging.channel('element-picker.js');
-
+var pickerBody = null;
+var pickerStyle = null;
 var svgOcean = null;
 var svgIslands = null;
 var svgRoot = null;
@@ -143,6 +143,8 @@ var netFilterCandidates = [];
 var cosmeticFilterCandidates = [];
 
 var targetElements = [];
+var candidateElements = [];
+var bestCandidateFilter = null;
 
 var lastNetFilterSession = window.location.host + window.location.pathname;
 var lastNetFilterHostname = '';
@@ -175,6 +177,54 @@ var safeQuerySelectorAll = function(node, selector) {
 
 /******************************************************************************/
 
+var rawFilterFromTextarea = function() {
+    var s = taCandidate.value,
+        pos = s.indexOf('\n');
+    return pos === -1 ? s.trim() : s.slice(0, pos).trim();
+};
+
+/******************************************************************************/
+
+var getElementBoundingClientRect = function(elem) {
+    var rect = typeof elem.getBoundingClientRect === 'function' ?
+        elem.getBoundingClientRect() :
+        { height: 0, left: 0, top: 0, width: 0 };
+
+    // https://github.com/gorhill/uBlock/issues/1024
+    // Try not returning an empty bounding rect.
+    if ( rect.width !== 0 && rect.height !== 0 ) {
+        return rect;
+    }
+
+    var left = rect.left,
+        right = rect.right,
+        top = rect.top,
+        bottom = rect.bottom;
+
+    var children = elem.children,
+        i = children.length;
+
+    while ( i-- ) {
+        rect = getElementBoundingClientRect(children[i]);
+        if ( rect.width === 0 || rect.height === 0 ) {
+            continue;
+        }
+        if ( rect.left < left ) { left = rect.left; }
+        if ( rect.right > right ) { right = rect.right; }
+        if ( rect.top < top ) { top = rect.top; }
+        if ( rect.bottom > bottom ) { bottom = rect.bottom; }
+    }
+
+    return {
+        height: bottom - top,
+        left: left,
+        top: top,
+        width: right - left
+    };
+};
+
+/******************************************************************************/
+
 var highlightElements = function(elems, force) {
     // To make mouse move handler more efficient
     if ( !force && elems.length === targetElements.length ) {
@@ -201,10 +251,7 @@ var highlightElements = function(elems, force) {
         if ( elem === pickerRoot ) {
             continue;
         }
-        if ( typeof elem.getBoundingClientRect !== 'function' ) {
-            continue;
-        }
-        rect = elem.getBoundingClientRect();
+        rect = getElementBoundingClientRect(elem);
 
         // Ignore if it's not on the screen
         if ( rect.left > ow || rect.top > oh ||
@@ -226,14 +273,35 @@ var highlightElements = function(elems, force) {
 
 /******************************************************************************/
 
-var removeElements = function(elems) {
-    var i = elems.length, elem;
-    while ( i-- ) {
-        elem = elems[i];
-        if ( elem.parentNode ) {
-            elem.parentNode.removeChild(elem);
+// https://github.com/gorhill/uBlock/issues/1897
+// Ignore `data:` URI, they can't be handled by an HTTP observer.
+
+var backgroundImageURLFromElement = function(elem) {
+    var style = window.getComputedStyle(elem),
+        bgImg = style.backgroundImage || '',
+        matches = /^url\((["']?)([^"']+)\1\)$/.exec(bgImg),
+        url = matches !== null && matches.length === 3 ? matches[2] : '';
+    return url.lastIndexOf('data:', 0) === -1 ? url.slice(0, 1024) : '';
+};
+
+/******************************************************************************/
+
+// https://github.com/gorhill/uBlock/issues/1725#issuecomment-226479197
+// Limit returned string to 1024 characters.
+// Also, return only URLs which will be seen by an HTTP observer.
+
+var resourceURLFromElement = function(elem) {
+    var tagName = elem.localName, s;
+    if (
+        (s = netFilter1stSources[tagName]) ||
+        (s = netFilter2ndSources[tagName])
+    ) {
+        s = elem[s];
+        if ( typeof s === 'string' && /^https?:\/\//.test(s) ) {
+            return s.slice(0, 1024);
         }
     }
+    return backgroundImageURLFromElement(elem);
 };
 
 /******************************************************************************/
@@ -251,12 +319,15 @@ var netFilterFromUnion = (function() {
         if ( from === '' || a.host === '' || a.host !== lastNetFilterHostname ) {
             lastNetFilterHostname = a.host;
             lastNetFilterUnion = to;
-            localMessager.send({
-                what: 'elementPickerEprom',
-                lastNetFilterSession: lastNetFilterSession,
-                lastNetFilterHostname: lastNetFilterHostname,
-                lastNetFilterUnion: lastNetFilterUnion
-            });
+            vAPI.messaging.send(
+                'elementPicker',
+                {
+                    what: 'elementPickerEprom',
+                    lastNetFilterSession: lastNetFilterSession,
+                    lastNetFilterHostname: lastNetFilterHostname,
+                    lastNetFilterUnion: lastNetFilterUnion
+                }
+            );
             return;
         }
 
@@ -290,19 +361,25 @@ var netFilterFromUnion = (function() {
         }
         from = fromTokens.join('').replace(/\*\*+/g, '*');
         if ( from !== '/*' && from !== to ) {
-            out.push('||' + lastNetFilterHostname + from);
+            var filter = '||' + lastNetFilterHostname + from;
+            if ( out.indexOf(filter) === -1 ) {
+                out.push(filter);
+            }
         } else {
             from = to;
         }
         lastNetFilterUnion = from;
 
         // Remember across element picker sessions
-        localMessager.send({
-            what: 'elementPickerEprom',
-            lastNetFilterSession: lastNetFilterSession,
-            lastNetFilterHostname: lastNetFilterHostname,
-            lastNetFilterUnion: lastNetFilterUnion
-        });
+        vAPI.messaging.send(
+            'elementPicker',
+            {
+                what: 'elementPickerEprom',
+                lastNetFilterSession: lastNetFilterSession,
+                lastNetFilterHostname: lastNetFilterHostname,
+                lastNetFilterUnion: lastNetFilterUnion
+            }
+        );
     };
 })();
 
@@ -310,24 +387,25 @@ var netFilterFromUnion = (function() {
 
 // Extract the best possible net filter, i.e. as specific as possible.
 
-var netFilterFromElement = function(elem, out) {
+var netFilterFromElement = function(elem) {
     if ( elem === null ) {
-        return;
+        return 0;
     }
     if ( elem.nodeType !== 1 ) {
-        return;
+        return 0;
     }
-    var tagName = elem.tagName.toLowerCase();
-    if ( netFilter1stSources.hasOwnProperty(tagName) === false ) {
-        return;
+    var src = resourceURLFromElement(elem);
+    if ( src === '' ) {
+        return 0;
     }
-    var src = elem[netFilter1stSources[tagName]];
-    if ( typeof src !== 'string' || src.length === 0 ) {
-        src = elem[netFilter2ndSources[tagName]];
-        if ( typeof src !== 'string' || src.length === 0 ) {
-            return;
-        }
+
+    if ( candidateElements.indexOf(elem) === -1 ) {
+        candidateElements.push(elem);
     }
+
+    var candidates = netFilterCandidates;
+    var len = candidates.length;
+
     // Remove fragment
     var pos = src.indexOf('#');
     if ( pos !== -1 ) {
@@ -336,104 +414,135 @@ var netFilterFromElement = function(elem, out) {
 
     var filter = src.replace(/^https?:\/\//, '||');
 
-    // Anchor absolute filter to hostname
-    out.push(filter);
+    if ( bestCandidateFilter === null ) {
+        bestCandidateFilter = {
+            type: 'net',
+            filters: candidates,
+            slot: candidates.length
+        };
+    }
+
+    candidates.push(filter);
 
     // Suggest a less narrow filter if possible
     pos = filter.indexOf('?');
     if ( pos !== -1 ) {
-        out.push(filter.slice(0, pos));
+        candidates.push(filter.slice(0, pos));
     }
 
     // Suggest a filter which is a result of combining more than one URL.
-    netFilterFromUnion(src, out);
+    netFilterFromUnion(src, candidates);
+
+    return candidates.length - len;
 };
 
 var netFilter1stSources = {
+     'audio': 'src',
      'embed': 'src',
     'iframe': 'src',
        'img': 'src',
-    'object': 'data'
+    'object': 'data',
+     'video': 'src'
 };
 
 var netFilter2ndSources = {
        'img': 'srcset'
 };
 
+var filterTypes = {
+     'audio': 'media',
+     'embed': 'object',
+    'iframe': 'subdocument',
+       'img': 'image',
+    'object': 'object',
+     'video': 'media',
+};
+
 /******************************************************************************/
 
 // Extract the best possible cosmetic filter, i.e. as specific as possible.
 
-var cosmeticFilterFromElement = function(elem, out) {
+// https://github.com/gorhill/uBlock/issues/1725
+// Also take into account the `src` attribute for `img` elements -- and limit
+// the value to the 1024 first characters.
+
+var cosmeticFilterFromElement = function(elem) {
     if ( elem === null ) {
-        return;
+        return 0;
     }
     if ( elem.nodeType !== 1 ) {
-        return;
+        return 0;
     }
-    var tagName = elem.tagName.toLowerCase();
-    var prefix = '';
-    var suffix = [];
+
+    if ( candidateElements.indexOf(elem) === -1 ) {
+        candidateElements.push(elem);
+    }
+
+    var tagName = elem.localName;
+    var selector = '';
     var v, i;
 
     // Id
     v = typeof elem.id === 'string' && CSS.escape(elem.id);
     if ( v ) {
-        suffix.push('#', v);
+        selector = '#' + v;
     }
 
     // Class(es)
-    if ( suffix.length === 0 ) {
-        v = elem.classList;
-        if ( v ) {
-            i = v.length || 0;
-            while ( i-- ) {
-                suffix.push('.' + CSS.escape(v.item(i)));
-            }
+    v = elem.classList;
+    if ( v ) {
+        i = v.length || 0;
+        while ( i-- ) {
+            selector += '.' + CSS.escape(v.item(i));
         }
     }
 
     // Tag name
-    if ( suffix.length === 0 ) {
-        prefix = tagName;
-    }
-
-    // Attributes (depends on tag name)
-    var attributes = [], attr;
-    switch ( tagName ) {
-    case 'a':
-        v = elem.getAttribute('href');
-        if ( v ) {
-            v = v.replace(/\?.*$/, '');
-            if ( v.length ) {
-                attributes.push({ k: 'href', v: v });
+    // https://github.com/gorhill/uBlock/issues/1901
+    // Trim attribute value, this may help in case of malformed HTML.
+    if ( selector === '' ) {
+        selector = tagName;
+        var attributes = [], attr;
+        switch ( tagName ) {
+        case 'a':
+            v = elem.getAttribute('href');
+            if ( v ) {
+                v = v.trim().replace(/\?.*$/, '');
+                if ( v.length ) {
+                    attributes.push({ k: 'href', v: v });
+                }
+            }
+            break;
+        case 'iframe':
+        case 'img':
+            v = elem.getAttribute('src');
+            if ( v && v.length !== 0 ) {
+                attributes.push({ k: 'src', v: v.trim().slice(0, 1024) });
+                break;
+            }
+            v = elem.getAttribute('alt');
+            if ( v && v.length !== 0 ) {
+                attributes.push({ k: 'alt', v: v });
+                break;
+            }
+            break;
+        default:
+            break;
+        }
+        while ( (attr = attributes.pop()) ) {
+            if ( attr.v.length === 0 ) {
+                continue;
+            }
+            v = elem.getAttribute(attr.k);
+            if ( attr.v === v ) {
+                selector += '[' + attr.k + '="' + attr.v + '"]';
+            } else if ( v.lastIndexOf(attr.v, 0) === 0 ) {
+                selector += '[' + attr.k + '^="' + attr.v + '"]';
+            } else {
+                selector += '[' + attr.k + '*="' + attr.v + '"]';
             }
         }
-        break;
-    case 'img':
-        v = elem.getAttribute('alt');
-        if ( v && v.length !== 0 ) {
-            attributes.push({ k: 'alt', v: v });
-        }
-        break;
-    default:
-        break;
     }
-    while ( attr = attributes.pop() ) {
-        if ( attr.v.length === 0 ) {
-            continue;
-        }
-        v = elem.getAttribute(attr.k);
-        if ( attr.v === v ) {
-            suffix.push('[', attr.k, '="', attr.v, '"]');
-        } else if ( v.indexOf(attr.v) === 0 ) {
-            suffix.push('[', attr.k, '^="', attr.v, '"]');
-        } else {
-            suffix.push('[', attr.k, '*="', attr.v, '"]');
-        }
-    }
-
-    var selector = prefix + suffix.join('');
 
     // https://github.com/chrisaljoudi/uBlock/issues/637
     // If the selector is still ambiguous at this point, further narrow using
@@ -444,10 +553,7 @@ var cosmeticFilterFromElement = function(elem, out) {
         i = 1;
         while ( elem.previousSibling !== null ) {
             elem = elem.previousSibling;
-            if ( typeof elem.tagName !== 'string' ) {
-                continue;
-            }
-            if ( elem.tagName.toLowerCase() !== tagName ) {
+            if ( typeof elem.localName !== 'string' || elem.localName !== tagName ) {
                 continue;
             }
             i++;
@@ -455,17 +561,45 @@ var cosmeticFilterFromElement = function(elem, out) {
         selector += ':nth-of-type(' + i + ')';
     }
 
-    out.push('##' + selector);
+    if ( bestCandidateFilter === null ) {
+        bestCandidateFilter = {
+            type: 'cosmetic',
+            filters: cosmeticFilterCandidates,
+            slot: cosmeticFilterCandidates.length
+        };
+    }
+
+    cosmeticFilterCandidates.push('##' + selector);
+
+    return 1;
 };
 
 /******************************************************************************/
 
-var filtersFromElement = function(elem) {
+var filtersFrom = function(x, y) {
+    bestCandidateFilter = null;
     netFilterCandidates.length = 0;
     cosmeticFilterCandidates.length = 0;
+    candidateElements.length = 0;
+
+    // We need at least one element.
+    var first = null;
+    if ( typeof x === 'number' ) {
+        first = elementFromPoint(x, y);
+    } else if ( x instanceof HTMLElement ) {
+        first = x;
+        x = undefined;
+    }
+
+    // Network filter from element which was clicked.
+    if ( first !== null ) {
+        netFilterFromElement(first);
+    }
+
+    // Cosmetic filter candidates from ancestors.
+    var elem = first;
     while ( elem && elem !== document.body ) {
-        netFilterFromElement(elem, netFilterCandidates);
-        cosmeticFilterFromElement(elem, cosmeticFilterCandidates);
+        cosmeticFilterFromElement(elem);
         elem = elem.parentNode;
     }
     // The body tag is needed as anchor only when the immediate child
@@ -474,119 +608,409 @@ var filtersFromElement = function(elem) {
     if ( i !== 0 && cosmeticFilterCandidates[i-1].indexOf(':nth-of-type(') !== -1 ) {
         cosmeticFilterCandidates.push('##body');
     }
-};
 
-/******************************************************************************/
+    // https://github.com/gorhill/uBlock/issues/1545
+    // Network filter candidates from all other elements found at point (x, y).
+    if ( typeof x === 'number' ) {
+        var attrName = pickerRoot.id + '-clickblind';
+        var previous;
+        elem = first;
+        while ( elem !== null ) {
+            previous = elem;
+            elem.setAttribute(attrName, '');
+            elem = elementFromPoint(x, y);
+            if ( elem === null || elem === previous ) {
+                break;
+            }
+            netFilterFromElement(elem);
+        }
+        var elems = document.querySelectorAll('[' + attrName + ']');
+        i = elems.length;
+        while ( i-- ) {
+            elems[i].removeAttribute(attrName);
+        }
 
-var elementsFromFilter = function(filter) {
-    var out = [];
-
-    filter = filter.trim();
-    if ( filter === '' ) {
-        return out;
+        netFilterFromElement(document.body);
     }
 
-    // Cosmetic filters: these are straight CSS selectors
-    // TODO: This is still not working well for a[href], because there are
-    // many ways to compose a valid href to the same effective URL.
-    // One idea is to normalize all a[href] on the page, but for now I will
-    // wait and see, as I prefer to refrain from tampering with the page
-    // content if I can avoid it.
-    if ( filter.lastIndexOf('##', 0) === 0 ) {
+    return netFilterCandidates.length + cosmeticFilterCandidates.length;
+};
+
+/*******************************************************************************
+
+    filterToDOMInterface.set
+    @desc   Look-up all the HTML elements matching the filter passed in
+            argument.
+    @param  string, a cosmetic or network filter.
+    @param  function, called once all items matching the filter have been
+            collected.
+    @return array, or undefined if the filter is invalid.
+
+    filterToDOMInterface.preview
+    @desc   Apply/unapply filter to the DOM.
+    @param  string, a cosmetic of network filter, or literal false to remove
+            the effects of the filter on the DOM.
+    @return undefined.
+
+    TODO: need to be revised once I implement chained cosmetic operators.
+
+*/
+var filterToDOMInterface = (function() {
+    // Net filters: we need to lookup manually -- translating into a foolproof
+    // CSS selector is just not possible.
+    var fromNetworkFilter = function(filter) {
+        var out = [];
+        // https://github.com/chrisaljoudi/uBlock/issues/945
+        // Transform into a regular expression, this allows the user to edit and
+        // insert wildcard(s) into the proposed filter.
+        var reStr = '';
+        if ( filter.length > 1 && filter.charAt(0) === '/' && filter.slice(-1) === '/' ) {
+            reStr = filter.slice(1, -1);
+        }
+        else {
+            var rePrefix = '', reSuffix = '';
+            if ( filter.slice(0, 2) === '||' ) {
+                filter = filter.replace('||', '');
+            } else {
+                if ( filter.charAt(0) === '|' ) {
+                    rePrefix = '^';
+                    filter = filter.slice(1);
+                }
+            }
+            if ( filter.slice(-1) === '|' ) {
+                reSuffix = '$';
+                filter = filter.slice(0, -1);
+            }
+            reStr = rePrefix +
+                    filter.replace(/[.+?${}()|[\]\\]/g, '\\$&').replace(/[\*^]+/g, '.*') +
+                    reSuffix;
+        }
+        var reFilter = null;
         try {
-            out = document.querySelectorAll(filter.slice(2));
+            reFilter = new RegExp(reStr);
         }
         catch (e) {
+            return out;
         }
-        return out;
-    }
 
-    // Net filters: we need to lookup manually -- translating into a
-    // foolproof CSS selector is just not possible
-
-    // https://github.com/chrisaljoudi/uBlock/issues/945
-    // Transform into a regular expression, this allows the user to edit and
-    // insert wildcard(s) into the proposed filter
-    var reStr = '';
-    if ( filter.length > 1 && filter.charAt(0) === '/' && filter.slice(-1) === '/' ) {
-        reStr = filter.slice(1, -1);
-    }
-    else {
-        var rePrefix = '', reSuffix = '';
-        if ( filter.slice(0, 2) === '||' ) {
-            filter = filter.replace('||', '');
-        } else {
-            if ( filter.charAt(0) === '|' ) {
-                rePrefix = '^';
-                filter = filter.slice(1);
+        // Lookup by tag names.
+        var src1stProps = netFilter1stSources;
+        var src2ndProps = netFilter2ndSources;
+        var srcProp, src;
+        var elems = document.querySelectorAll(Object.keys(src1stProps).join()),
+            iElem = elems.length,
+            elem;
+        while ( iElem-- ) {
+            elem = elems[iElem];
+            srcProp = src1stProps[elem.localName];
+            src = elem[srcProp];
+            if ( typeof src !== 'string' || src.length === 0 ) {
+                srcProp = src2ndProps[elem.localName];
+                src = elem[srcProp];
+            }
+            if ( src && reFilter.test(src) ) {
+                out.push({
+                    type: 'network',
+                    elem: elem,
+                    src: srcProp,
+                    opts: filterTypes[elem.localName],
+                });
             }
         }
-        if ( filter.slice(-1) === '|' ) {
-            reSuffix = '$';
-            filter = filter.slice(0, -1);
+
+        // Find matching background image in current set of candidate elements.
+        elems = candidateElements;
+        iElem = elems.length;
+        while ( iElem-- ) {
+            elem = elems[iElem];
+            if ( reFilter.test(backgroundImageURLFromElement(elem)) ) {
+                out.push({
+                    type: 'network',
+                    elem: elem,
+                    style: 'background-image',
+                    opts: 'image',
+                });
+            }
         }
-        reStr = rePrefix +
-                filter.replace(/[.+?${}()|[\]\\]/g, '\\$&').replace(/[\*^]+/g, '.*') +
-                reSuffix;
-    }
-    var reFilter = null;
-    try {
-        reFilter = new RegExp(reStr);
-    } catch (e) {
+
         return out;
-    }
+    };
 
-    var src1stProps = netFilter1stSources;
-    var src2ndProps = netFilter2ndSources;
-    var elems = document.querySelectorAll(Object.keys(src1stProps).join());
-    var i = elems.length;
-    var elem, src;
-    while ( i-- ) {
-        elem = elems[i];
-        src = elem[src1stProps[elem.localName]];
-        if ( typeof src !== 'string' || src.length === 0 ) {
-            src = elem[src2ndProps[elem.localName]];
+    // Cosmetic filters: these are straight CSS selectors.
+    // TODO: This is still not working well for a[href], because there are many
+    // ways to compose a valid href to the same effective URL. One idea is to
+    // normalize all a[href] on the page, but for now I will wait and see, as I
+    // prefer to refrain from tampering with the page content if I can avoid it.
+    var fromPlainCosmeticFilter = function(filter) {
+        var elems;
+        try {
+            elems = document.querySelectorAll(filter);
         }
-        if ( src && reFilter.test(src) ) {
-            out.push(elem);
+        catch (e) {
+            return;
         }
-    }
-    return out;
-};
+        var out = [], iElem = elems.length;
+        while ( iElem-- ) {
+            out.push({ type: 'cosmetic', elem: elems[iElem]});
+        }
+        return out;
+    };
 
-// https://www.youtube.com/watch?v=YI2XuIOW3gM
+    // https://github.com/gorhill/uBlock/issues/1772
+    // Handle procedural cosmetic filters.
+    var fromCompiledCosmeticFilter = function(raw) {
+        if ( typeof raw !== 'string' ) { return; }
+        var o;
+        try {
+            o = JSON.parse(raw);
+        } catch(ex) {
+            return;
+        }
+        var elems;
+        if ( o.style ) {
+            elems = document.querySelectorAll(o.style[0]);
+            lastAction = o.style.join(' ');
+        } else if ( o.tasks ) {
+            elems = vAPI.domFilterer.createProceduralFilter(o).exec();
+        }
+        if ( !elems ) { return; }
+        var out = [];
+        for ( var i = 0, n = elems.length; i < n; i++ ) {
+            out.push({ type: 'cosmetic', elem: elems[i] });
+        }
+        return out;
+    };
+
+    var lastFilter,
+        lastResultset,
+        lastAction,
+        appliedStyleTag,
+        applied = false,
+        previewing = false;
+
+    var queryAll = function(filter, callback) {
+        filter = filter.trim();
+        if ( filter === lastFilter ) {
+            callback(lastResultset);
+            return;
+        }
+        unapply();
+        if ( filter === '' ) {
+            lastFilter = '';
+            lastResultset = [];
+            callback(lastResultset);
+            return;
+        }
+        lastFilter = filter;
+        lastAction = undefined;
+        if ( filter.lastIndexOf('##', 0) === -1 ) {
+            lastResultset = fromNetworkFilter(filter);
+            if ( previewing ) { apply(); }
+            callback(lastResultset);
+            return;
+        }
+        var selector = filter.slice(2);
+        lastResultset = fromPlainCosmeticFilter(selector);
+        if ( lastResultset ) {
+            if ( previewing ) { apply(); }
+            callback(lastResultset);
+            return;
+        }
+        // Procedural cosmetic filter
+        vAPI.messaging.send(
+            'elementPicker',
+            { what: 'compileCosmeticFilterSelector', selector: selector },
+            function(response) {
+                lastResultset = fromCompiledCosmeticFilter(response);
+                if ( previewing ) { apply(); }
+                callback(lastResultset);
+            }
+        );
+    };
+
+    var applyHide = function() {
+        var htmlElem = document.documentElement,
+            items = lastResultset,
+            item, elem, style;
+        for ( var i = 0, n = items.length; i < n; i++ ) {
+            item = items[i];
+            elem = item.elem;
+            // https://github.com/gorhill/uBlock/issues/1629
+            if ( elem === pickerRoot ) {
+                continue;
+            }
+            style = elem.style;
+            if (
+                (elem !== htmlElem) &&
+                (item.type === 'cosmetic' || item.type === 'network' && item.src !== undefined)
+            ) {
+                item.display = style.getPropertyValue('display');
+                item.displayPriority = style.getPropertyPriority('display');
+                style.setProperty('display', 'none', 'important');
+            }
+            if ( item.type === 'network' && item.style === 'background-image' ) {
+                item.backgroundImage = style.getPropertyValue('background-image');
+                item.backgroundImagePriority = style.getPropertyPriority('background-image');
+                style.setProperty('background-image', 'none', 'important');
+            }
+        }
+    };
+
+    var unapplyHide = function() {
+        var items = lastResultset, item;
+        for ( var i = 0, n = items.length; i < n; i++ ) {
+            item = items[i];
+            if ( item.hasOwnProperty('display') ) {
+                item.elem.style.setProperty(
+                    'display',
+                    item.display,
+                    item.displayPriority
+                );
+                delete item.display;
+            }
+            if ( item.hasOwnProperty('backgroundImage') ) {
+                item.elem.style.setProperty(
+                    'background-image',
+                    item.backgroundImage,
+                    item.backgroundImagePriority
+                );
+                delete item.backgroundImage;
+            }
+        }
+    };
+
+    var unapplyStyle = function() {
+        if ( !appliedStyleTag || appliedStyleTag.parentNode === null ) {
+            return;
+        }
+        appliedStyleTag.parentNode.removeChild(appliedStyleTag);
+    };
+
+    var applyStyle = function() {
+        if ( !appliedStyleTag ) {
+            appliedStyleTag = document.createElement('style');
+            appliedStyleTag.setAttribute('type', 'text/css');
+        }
+        appliedStyleTag.textContent = lastAction;
+        if ( appliedStyleTag.parentNode === null ) {
+            document.head.appendChild(appliedStyleTag);
+        }
+    };
+
+    var apply = function() {
+        if ( applied ) {
+            unapply();
+        }
+        if ( lastResultset === undefined ) {
+            return;
+        }
+        if ( typeof lastAction === 'string' ) {
+            applyStyle();
+        } else {
+            applyHide();
+        }
+        applied = true;
+    };
+
+    var unapply = function() {
+        if ( !applied ) {
+            return;
+        }
+        if ( typeof lastAction === 'string' ) {
+            unapplyStyle();
+        } else {
+            unapplyHide();
+        }
+        applied = false;
+    };
+
+    var preview = function(filter) {
+        previewing = filter !== false;
+        if ( previewing ) {
+            queryAll(filter, function(items) {
+                if ( items !== undefined ) {
+                    apply();
+                }
+            });
+        } else {
+            unapply();
+        }
+        pickerBody.classList.toggle('preview', previewing);
+    };
+
+    return {
+        previewing: function() { return previewing; },
+        preview: preview,
+        set: queryAll
+    };
+})();
 
 /******************************************************************************/
 
-var userFilterFromCandidate = function() {
-    var v = taCandidate.value;
+var userFilterFromCandidate = function(callback) {
+    var v = rawFilterFromTextarea();
+    filterToDOMInterface.set(v, function(items) {
+        if ( !items || items.length === 0 ) {
+            callback();
+            return;
+        }
 
-    var elems = elementsFromFilter(v);
-    if ( elems.length === 0 ) {
-        return false;
-    }
+        // https://github.com/gorhill/uBlock/issues/738
+        // Trim dots.
+        var hostname = window.location.hostname;
+        if ( hostname.slice(-1) === '.' ) {
+            hostname = hostname.slice(0, -1);
+        }
 
-    // Cosmetic filter?
-    if ( v.lastIndexOf('##', 0) === 0 ) {
-        return window.location.hostname + v;
-    }
+        // Cosmetic filter?
+        if ( v.lastIndexOf('##', 0) === 0 ) {
+            callback(hostname + v);
+            return;
+        }
 
-    // If domain included in filter, no need for domain option
-    if ( v.lastIndexOf('||', 0) === 0 ) {
-        return v;
-    }
+        // Assume net filter
+        var opts = [];
 
-    // Assume net filter
-    return v + '$domain=' + window.location.hostname;
+        // If no domain included in filter, we need domain option
+        if ( v.lastIndexOf('||', 0) === -1 ) {
+            opts.push('domain=' + hostname);
+        }
+
+        var item = items[0];
+        if ( item.opts ) {
+            opts.push(item.opts);
+        }
+
+        if ( opts.length ) {
+            v += '$' + opts.join(',');
+        }
+
+        callback(v);
+    });
 };
 
 /******************************************************************************/
 
-var onCandidateChanged = function() {
-    var elems = elementsFromFilter(taCandidate.value);
-    dialog.querySelector('#create').disabled = elems.length === 0;
-    highlightElements(elems);
-};
+var onCandidateChanged = (function() {
+    var process = function(items) {
+        var elems = [], valid = items !== undefined;
+        if ( valid ) {
+            for ( var i = 0; i < items.length; i++ ) {
+                elems.push(items[i].elem);
+            }
+        }
+        pickerBody.querySelector('#resultsetCount').textContent = valid ?
+            items.length.toLocaleString() :
+            'E';
+        dialog.querySelector('section').classList.toggle('invalidFilter', !valid);
+        dialog.querySelector('#create').disabled = elems.length === 0;
+        highlightElements(elems, true);
+    };
+
+    return function() {
+        filterToDOMInterface.set(rawFilterFromTextarea(), process);
+    };
+})();
 
 /******************************************************************************/
 
@@ -600,21 +1024,53 @@ var candidateFromFilterChoice = function(filterChoice) {
     }
 
     // For net filters there no such thing as a path
-    if ( filterChoice.type === 'net' || filterChoice.modifier ) {
+    if ( filter.lastIndexOf('##', 0) !== 0 ) {
+        return filter;
+    }
+
+    // At this point, we have a cosmetic filter
+
+    // Modifier means "target broadly". Hence:
+    // - Do not compute exact path.
+    // - Discard narrowing directives.
+    if ( filterChoice.modifier ) {
+        filter = filter.replace(/:nth-of-type\(\d+\)/, '');
+        // Remove the id if one or more classes exist.
+        if ( filter.charAt(2) === '#' && filter.indexOf('.') !== -1 ) {
+            filter = filter.replace(/#[^#.]+/, '');
+        }
         return filter;
     }
 
     // Return path: the target element, then all siblings prepended
-    var selector = [];
+    var selector = '', joiner = '';
     for ( ; slot < filters.length; slot++ ) {
         filter = filters[slot];
-        selector.unshift(filter.replace(/^##/, ''));
+        // Remove all classes when an id exists.
+        if ( filter.charAt(2) === '#' ) {
+            filter = filter.replace(/\..+$/, '');
+        }
+        selector = filter.slice(2) + joiner + selector;
         // Stop at any element with an id: these are unique in a web page
-        if ( filter.slice(0, 3) === '###' ) {
+        if ( filter.lastIndexOf('###', 0) === 0 ) {
             break;
         }
+        // Stop if current selector matches only one element on the page
+        if ( document.querySelectorAll(selector).length === 1 ) {
+            break;
+        }
+        joiner = ' > ';
     }
-    return '##' + selector.join(' > ');
+
+    // https://github.com/gorhill/uBlock/issues/2519
+    if (
+        slot === filters.length &&
+        document.querySelectorAll(selector).length > 1
+    ) {
+        selector = 'body > ' + selector;
+    }
+
+    return '##' + selector;
 };
 
 /******************************************************************************/
@@ -623,7 +1079,6 @@ var filterChoiceFromEvent = function(ev) {
     var li = ev.target;
     var isNetFilter = li.textContent.slice(0, 2) !== '##';
     var r = {
-        type: isNetFilter ? 'net' : 'cosmetic',
         filters: isNetFilter ? netFilterCandidates : cosmeticFilterCandidates,
         slot: 0,
         modifier: ev.ctrlKey || ev.metaKey
@@ -643,16 +1098,23 @@ var onDialogClicked = function(ev) {
     }
 
     else if ( ev.target.id === 'create' ) {
-        var filter = userFilterFromCandidate();
-        if ( filter ) {
+        // We have to exit from preview mode: this guarantees matching elements
+        // will be found for the candidate filter.
+        filterToDOMInterface.preview(false);
+        userFilterFromCandidate(function(filter) {
+            if ( !filter ) { return; }
             var d = new Date();
-            localMessager.send({
-                what: 'createUserFilter',
-                filters: '! ' + d.toLocaleString() + ' ' + window.location.href + '\n' + filter,
-            });
-            removeElements(elementsFromFilter(taCandidate.value));
+            vAPI.messaging.send(
+                'elementPicker',
+                {
+                    what: 'createUserFilter',
+                    filters: '! ' + d.toLocaleString() + ' ' + window.location.href + '\n' + filter,
+                    pageDomain: window.location.hostname
+                }
+            );
+            filterToDOMInterface.preview(rawFilterFromTextarea());
             stopPicker();
-        }
+        });
     }
 
     else if ( ev.target.id === 'pick' ) {
@@ -660,7 +1122,17 @@ var onDialogClicked = function(ev) {
     }
 
     else if ( ev.target.id === 'quit' ) {
+        filterToDOMInterface.preview(false);
         stopPicker();
+    }
+
+    else if ( ev.target.id === 'preview' ) {
+        if ( filterToDOMInterface.previewing() ) {
+            filterToDOMInterface.preview(false);
+        } else {
+            filterToDOMInterface.preview(rawFilterFromTextarea());
+        }
+        highlightElements(targetElements, true);
     }
 
     else if ( ev.target.parentNode.classList.contains('changeFilter') ) {
@@ -707,42 +1179,68 @@ var showDialog = function(options) {
     populate(netFilterCandidates, '#netFilters');
     populate(cosmeticFilterCandidates, '#cosmeticFilters');
 
-    dialog.querySelector('ul').style.display = netFilterCandidates.length || cosmeticFilterCandidates.length ? '' : 'none';
+    dialog.querySelector('ul').style.display =
+        netFilterCandidates.length || cosmeticFilterCandidates.length
+            ? ''
+            : 'none';
     dialog.querySelector('#create').disabled = true;
 
     // Auto-select a candidate filter
-    var filterChoice = {
-        type: '',
-        filters: [],
-        slot: 0,
-        modifier: options.modifier || false
-    };
-    if ( netFilterCandidates.length ) {
-        filterChoice.type = 'net';
-        filterChoice.filters = netFilterCandidates;
-    } else if ( cosmeticFilterCandidates.length ) {
-        filterChoice.type = 'cosmetic';
-        filterChoice.filters = cosmeticFilterCandidates;
+
+    if ( bestCandidateFilter === null ) {
+        taCandidate.value = '';
+        return;
     }
 
-    taCandidate.value = '';
-    if ( filterChoice.type !== '' ) {
-        taCandidate.value = candidateFromFilterChoice(filterChoice);
-        onCandidateChanged();
-    }
+    var filterChoice = {
+        filters: bestCandidateFilter.filters,
+        slot: bestCandidateFilter.slot,
+        modifier: options.modifier || false
+    };
+
+    taCandidate.value = candidateFromFilterChoice(filterChoice);
+    onCandidateChanged();
 };
 
 /******************************************************************************/
 
-var elementFromPoint = function(x, y) {
-    pickerRoot.style.pointerEvents = 'none';
-    var elem = document.elementFromPoint(x, y);
-    if ( elem === document.body || elem === document.documentElement ) {
-        elem = null;
+var zap = function() {
+    if ( targetElements.length === 0 ) { return; }
+    var elem = targetElements[0],
+        style = window.getComputedStyle(elem);
+    // Heuristic to detect scroll-locking: remove such lock when detected.
+    if ( parseInt(style.zIndex, 10) >= 1000 || style.position === 'fixed' ) {
+        document.body.style.setProperty('overflow', 'auto', 'important');
+        document.documentElement.style.setProperty('overflow', 'auto', 'important');
     }
-    pickerRoot.style.pointerEvents = '';
-    return elem;
+    elem.parentNode.removeChild(elem);
+    elem = elementFromPoint();
+    highlightElements(elem ? [elem] : []);
 };
+
+/******************************************************************************/
+
+var elementFromPoint = (function() {
+    var lastX, lastY;
+
+    return function(x, y) {
+        if ( x !== undefined ) {
+            lastX = x; lastY = y;
+        } else if ( lastX !== undefined ) {
+            x = lastX; y = lastY;
+        } else {
+            return null;
+        }
+        if ( !pickerRoot ) { return null; }
+        pickerRoot.style.pointerEvents = 'none';
+        var elem = document.elementFromPoint(x, y);
+        if ( elem === document.body || elem === document.documentElement ) {
+            elem = null;
+        }
+        pickerRoot.style.pointerEvents = '';
+        return elem;
+    };
+})();
 
 /******************************************************************************/
 
@@ -756,32 +1254,82 @@ var onSvgHovered = (function() {
         highlightElements(elem ? [elem] : []);
     };
 
-    var onMove = function(ev) {
+    return function onMove(ev) {
         mx = ev.clientX;
         my = ev.clientY;
         if ( timer === null ) {
             timer = vAPI.setTimeout(onTimer, 40);
         }
     };
+})();
 
-    return onMove;
+/******************************************************************************/
+
+var onSvgTouchStartStop = (function() {
+    var startX,
+        startY;
+    return function onTouch(ev) {
+        ev.preventDefault();
+        if ( ev.type === 'touchstart' ) {
+            startX = ev.touches[0].pageX;
+            startY = ev.touches[0].pageY;
+            return;
+        }
+        if ( startX === undefined ) { return; }
+        var stopX = ev.changedTouches[0].pageX,
+            stopY = ev.changedTouches[0].pageY,
+            distance = Math.sqrt(
+                Math.pow(stopX - startX, 2),
+                Math.pow(stopY - startY, 2)
+            );
+        // Swipe = exit element zapper/picker.
+        if ( distance > 32 ) {
+            stopPicker();
+            return;
+        }
+        // Interpret touch event as a click.
+        onSvgClicked({
+            type: 'click',
+            target: ev.target,
+            clientX: startX,
+            clientY: startY
+        });
+    };
 })();
 
 /******************************************************************************/
 
 var onSvgClicked = function(ev) {
+    // If zap mode, highlight element under mouse, this makes the zapper usable
+    // on touch screens.
+    if ( pickerBody.classList.contains('zap') ) {
+        var elem = targetElements.lenght !== 0 && targetElements[0];
+        if ( !elem || ev.target !== svgIslands ) {
+            elem = elementFromPoint(ev.clientX, ev.clientY);
+            if ( elem !== null ) {
+                highlightElements([elem]);
+                return;
+            }
+        }
+        zap();
+        if ( !ev.shiftKey ) {
+            stopPicker();
+        }
+        return;
+    }
     // https://github.com/chrisaljoudi/uBlock/issues/810#issuecomment-74600694
-    // Unpause picker if user click outside dialog
-    if ( dialog.parentNode.classList.contains('paused') ) {
-        unpausePicker();
+    // Unpause picker if:
+    // - click outside dialog AND
+    // - not in preview mode
+    if ( pickerBody.classList.contains('paused') ) {
+        if ( filterToDOMInterface.previewing() === false ) {
+            unpausePicker();
+        }
         return;
     }
-
-    var elem = elementFromPoint(ev.clientX, ev.clientY);
-    if ( elem === null ) {
+    if ( filtersFrom(ev.clientX, ev.clientY) === 0 ) {
         return;
     }
-    filtersFromElement(elem);
     showDialog();
 };
 
@@ -789,16 +1337,26 @@ var onSvgClicked = function(ev) {
 
 var svgListening = function(on) {
     var action = (on ? 'add' : 'remove') + 'EventListener';
-    svgRoot[action]('mousemove', onSvgHovered);
+    svgRoot[action]('mousemove', onSvgHovered, { passive: true });
 };
 
 /******************************************************************************/
 
 var onKeyPressed = function(ev) {
-    if ( ev.which === 27 ) {
+    // Delete
+    if ( ev.key === 'Delete' && pickerBody.classList.contains('zap') ) {
         ev.stopPropagation();
         ev.preventDefault();
+        zap();
+        return;
+    }
+    // Esc
+    if ( ev.key === 'Escape' || ev.which === 27 ) {
+        ev.stopPropagation();
+        ev.preventDefault();
+        filterToDOMInterface.preview(false);
         stopPicker();
+        return;
     }
 };
 
@@ -815,14 +1373,15 @@ var onScrolled = function() {
 /******************************************************************************/
 
 var pausePicker = function() {
-    dialog.parentNode.classList.add('paused');
+    pickerBody.classList.add('paused');
     svgListening(false);
 };
 
 /******************************************************************************/
 
 var unpausePicker = function() {
-    dialog.parentNode.classList.remove('paused');
+    filterToDOMInterface.preview(false);
+    pickerBody.classList.remove('paused');
     svgListening(true);
 };
 
@@ -832,10 +1391,19 @@ var unpausePicker = function() {
 // in use: to ensure this, release all local references.
 
 var stopPicker = function() {
+    vAPI.shutdown.remove(stopPicker);
+
     targetElements = [];
+    candidateElements = [];
+    bestCandidateFilter = null;
 
     if ( pickerRoot === null ) {
         return;
+    }
+
+    // https://github.com/gorhill/uBlock/issues/2060
+    if ( vAPI.userCSS ) {
+        vAPI.userCSS.remove(pickerStyle.textContent);
     }
 
     window.removeEventListener('scroll', onScrolled, true);
@@ -844,13 +1412,16 @@ var stopPicker = function() {
     dialog.removeEventListener('click', onDialogClicked);
     svgListening(false);
     svgRoot.removeEventListener('click', onSvgClicked);
+    svgRoot.removeEventListener('touchstart', onSvgTouchStartStop);
+    svgRoot.removeEventListener('touchend', onSvgTouchStartStop);
+    pickerStyle.parentNode.removeChild(pickerStyle);
     pickerRoot.parentNode.removeChild(pickerRoot);
     pickerRoot.onload = null;
     pickerRoot =
+    pickerBody =
     dialog =
     svgRoot = svgOcean = svgIslands =
     taCandidate = null;
-    localMessager.close();
 
     window.focus();
 };
@@ -866,23 +1437,31 @@ var startPicker = function(details) {
         'text/html'
     );
 
+    // Provide an id users can use as anchor to personalize uBO's element
+    // picker style properties.
+    parsedDom.documentElement.id = 'ublock0-epicker';
+
     frameDoc.replaceChild(
         frameDoc.adoptNode(parsedDom.documentElement),
         frameDoc.documentElement
     );
 
-    frameDoc.body.setAttribute('lang', navigator.language);
+    pickerBody = frameDoc.body;
+    pickerBody.setAttribute('lang', navigator.language);
+    pickerBody.classList.toggle('zap', details.zap === true);
 
-    dialog = frameDoc.body.querySelector('aside');
+    dialog = pickerBody.querySelector('aside');
     dialog.addEventListener('click', onDialogClicked);
 
     taCandidate = dialog.querySelector('textarea');
     taCandidate.addEventListener('input', onCandidateChanged);
 
-    svgRoot = frameDoc.body.querySelector('svg');
+    svgRoot = pickerBody.querySelector('svg');
     svgOcean = svgRoot.firstChild;
     svgIslands = svgRoot.lastChild;
     svgRoot.addEventListener('click', onSvgClicked);
+    svgRoot.addEventListener('touchstart', onSvgTouchStartStop);
+    svgRoot.addEventListener('touchend', onSvgTouchStartStop);
     svgListening(true);
 
     window.addEventListener('scroll', onScrolled, true);
@@ -890,8 +1469,8 @@ var startPicker = function(details) {
     pickerRoot.contentWindow.focus();
 
     // Restore net filter union data if it originate from the same URL.
-    var eprom = details.eprom || {};
-    if ( eprom.lastNetFilterSession === lastNetFilterSession ) {
+    var eprom = details.eprom || null;
+    if ( eprom !== null && eprom.lastNetFilterSession === lastNetFilterSession ) {
         lastNetFilterHostname = eprom.lastNetFilterHostname || '';
         lastNetFilterUnion = eprom.lastNetFilterUnion || '';
     }
@@ -900,13 +1479,9 @@ var startPicker = function(details) {
 
     highlightElements([], true);
 
-    var elem;
-
     // Try using mouse position
     if ( details.clientX !== -1 ) {
-        elem = elementFromPoint(details.clientX, details.clientY);
-        if ( elem !== null ) {
-            filtersFromElement(elem);
+        if ( filtersFrom(details.clientX, details.clientY) !== 0 ) {
             showDialog();
             return;
         }
@@ -920,11 +1495,11 @@ var startPicker = function(details) {
     }
     var srcAttrMap = {
         'a': 'href',
-        'img': 'src',
-        'iframe': 'src',
+        'audio': 'src',
         'embed': 'src',
+        'iframe': 'src',
+        'img': 'src',
         'video': 'src',
-        'audio': 'src'
     };
     var tagName = target.slice(0, pos);
     var url = target.slice(pos + 1);
@@ -934,7 +1509,7 @@ var startPicker = function(details) {
     }
     var elems = document.querySelectorAll(tagName + '[' + attr + ']');
     var i = elems.length;
-    var src;
+    var elem, src;
     while ( i-- ) {
         elem = elems[i];
         src = elem[attr];
@@ -948,7 +1523,7 @@ var startPicker = function(details) {
             behavior: 'smooth',
             block: 'start'
         });
-        filtersFromElement(elem);
+        filtersFrom(elem);
         showDialog({ modifier: true });
         return;
     }
@@ -962,32 +1537,59 @@ var startPicker = function(details) {
 pickerRoot = document.createElement('iframe');
 pickerRoot.id = vAPI.sessionId;
 pickerRoot.style.cssText = [
-    'display: block',
-    'visibility: visible',
-    'opacity: 1',
-    'position: fixed',
-    'top: 0',
-    'left: 0',
-    'width: 100%',
-    'height: 100%',
     'background: transparent',
-    'margin: 0',
-    'padding: 0',
     'border: 0',
     'border-radius: 0',
     'box-shadow: none',
+    'display: block',
+    'height: 100%',
+    'left: 0',
+    'margin: 0',
+    'max-height: none',
+    'opacity: 1',
     'outline: 0',
+    'padding: 0',
+    'position: fixed',
+    'top: 0',
+    'visibility: visible',
+    'width: 100%',
     'z-index: 2147483647',
     ''
-].join('!important; ');
+].join(' !important;');
+
+// https://github.com/gorhill/uBlock/issues/1529
+// In addition to inline styles, harden the element picker styles by using
+// a dedicated style tag.
+pickerStyle = document.createElement('style');
+pickerStyle.textContent = [
+    '#' + pickerRoot.id + ' {',
+        pickerRoot.style.cssText,
+    '}',
+    '[' + pickerRoot.id + '-clickblind] {',
+        'pointer-events: none !important;',
+    '}',
+    ''
+].join('\n');
+document.documentElement.appendChild(pickerStyle);
+
+// https://github.com/gorhill/uBlock/issues/2060
+if ( vAPI.domFilterer ) {
+    pickerRoot[vAPI.domFilterer.getExcludeId()] = true;
+}
+if ( vAPI.userCSS ) {
+    vAPI.userCSS.add(pickerStyle.textContent);
+}
 
 pickerRoot.onload = function() {
-    localMessager.send({ what: 'elementPickerArguments' }, startPicker);
+    vAPI.shutdown.add(stopPicker);
+    vAPI.messaging.send(
+        'elementPicker',
+        { what: 'elementPickerArguments' },
+        startPicker
+    );
 };
 
 document.documentElement.appendChild(pickerRoot);
-
-/******************************************************************************/
 
 // https://www.youtube.com/watch?v=sociXdKnyr8
 

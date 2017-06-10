@@ -2,8 +2,28 @@
     "manifest_version": 2,
 
     "name": "uBlock Origin",
-    "version": "1.0.0.0",
+    "version": "1.12.5.102",
 
+    "commands": {
+        "launch-element-zapper": {
+            "suggested_key": {
+              "default": "Alt+Z"
+            },
+            "description": "__MSG_popupTipZapper__"
+        },
+        "launch-element-picker": {
+            "suggested_key": {
+              "default": "Alt+X"
+            },
+            "description": "__MSG_popupTipPicker__"
+        },
+        "launch-logger": {
+            "suggested_key": {
+              "default": "Alt+L"
+            },
+            "description": "__MSG_popupTipLog__"
+        }
+    },
     "default_locale": "en",
     "description": "__MSG_extShortDesc__",
     "icons": {
@@ -27,29 +47,20 @@
     "content_scripts": [
         {
             "matches": ["http://*/*", "https://*/*"],
-            "js": ["js/vapi-client.js", "js/contentscript-start.js"],
+            "js": ["js/vapi-client.js", "js/contentscript.js"],
             "run_at": "document_start",
             "all_frames": true
         },
         {
             "matches": ["http://*/*", "https://*/*"],
-            "js": ["js/contentscript-end.js"],
-            "run_at": "document_end",
-            "all_frames": true
-        },
-        {
-            "matches": [
-                "https://*.adblockplus.org/*",
-                "https://*.adblockplus.me/*",
-                "https://www.fanboy.co.nz/*",
-                "https://github.com/gorhill/uBlock/wiki/Filter-lists-from-around-the-web"
-            ],
-            "js": ["js/subscriber.js"],
-            "run_at": "document_idle"
+            "js": ["js/scriptlets/subscriber.js"],
+            "run_at": "document_idle",
+            "all_frames": false
         }
     ],
     "incognito": "split",
-    "minimum_chrome_version": "22.0",
+    "minimum_chrome_version": "38.0",
+    "optional_permissions": [ "file:///*" ],
     "options_page": "dashboard.html",
     "options_ui": {
         "page": "options_ui.html"
@@ -63,8 +74,10 @@
         "webNavigation",
         "webRequest",
         "webRequestBlocking",
-        "http://*/*",
-        "https://*/*"
+        "<all_urls>"
     ],
-    "short_name": "uBlock₀"
+    "short_name": "uBlock₀",
+    "storage": {
+        "managed_schema": "managed_storage.json"
+    }
 }

@@ -4,7 +4,7 @@
     "description":"extension name."
   },
   "extShortDesc":{
-    "message":"Sonunda, etkili bir engelleyici. İşlemci ve belleği zorlamaz.",
+    "message":"Sonunda, etkili bir engelleyici. İşlemci ve belleği yormaz.",
     "description":"this will be in the chrome web store: must be 132 characters or less"
   },
   "dashboardName":{
@@ -32,12 +32,16 @@
     "description":"appears as tab name in dashboard"
   },
   "statsPageName":{
-    "message":"uBlock₀ — Ağ istek günlüğü",
-    "description":"Title for the network request log window"
+    "message":"uBlock₀ — Günlükçü",
+    "description":"Title for the logger window"
   },
   "aboutPageName":{
     "message":"Hakkında",
     "description":"appears as tab name in dashboard"
+  },
+  "advancedSettingsPageName":{
+    "message":"Gelişmiş ayarlar",
+    "description":"Title for the advanced settings page"
   },
   "popupPowerSwitchInfo":{
     "message":"Tıklama: uBlock₀'i bu site için devre dışı bırak\/etkinleştir.\n\nCtrl+tıklama: uBlock₀'i sadece bu sayfa için devre dışı bırak.",
@@ -67,29 +71,49 @@
     "message":"Kontrol panelini açmak için tıklayın",
     "description":"English: Click to open the dashboard"
   },
+  "popupTipZapper":{
+    "message":"Öğe silme moduna gir",
+    "description":"Tooltip for the element-zapper icon in the popup panel"
+  },
   "popupTipPicker":{
     "message":"Öğe seçme moduna gir",
     "description":"English: Enter element picker mode"
   },
   "popupTipLog":{
-    "message":"İstek günlüğüne git",
-    "description":"English: Go to request log"
+    "message":"Günlükçüyü açar",
+    "description":"Tooltip used for the logger icon in the panel"
   },
   "popupTipNoPopups":{
     "message":"Bu site için açılır pencere engellemeyi aç\/kapa",
-    "description":"English: Toggle the blocking of all popups for this site"
+    "description":"Tooltip for the no-popups per-site switch"
   },
-  "popupTipNoStrictBlocking":{
-    "message":"Bu site için katı engellemeyi aç\/kapa",
-    "description":"English: Toggle strict blocking for this site"
+  "popupTipNoLargeMedia":{
+    "message":"Bu site için büyük medya öğelerini engellemeyi aç\/kapa",
+    "description":"Tooltip for the no-large-media per-site switch"
   },
   "popupTipNoCosmeticFiltering":{
     "message":"Bu site için kozmetik süzmeyi aç\/kapa",
-    "description":"English: Toggle cosmetic filtering for this site"
+    "description":"Tooltip for the no-cosmetic-filtering per-site switch"
   },
   "popupTipNoRemoteFonts":{
     "message":"Bu site için uzak yazıtiplerini engellemeyi aç\/kapa",
-    "description":"English: Toggle the blocking of remote fonts for this site"
+    "description":"Tooltip for the no-remote-fonts per-site switch"
+  },
+  "popupTipGlobalRules":{
+    "message":"Genel kurallar: bu sütun tüm sitelere uygulanan kurallar içindir.",
+    "description":"Tooltip when hovering the top-most cell of the global-rules column."
+  },
+  "popupTipLocalRules":{
+    "message":"Yerel kurallar: bu sütun yalnızca geçerli siteye uygulanan kurallar içindir.\nYerel kurallar genel kuralları geçersiz kılar.",
+    "description":"Tooltip when hovering the top-most cell of the local-rules column."
+  },
+  "popupTipSaveRules":{
+    "message":"Değişikliklerinizi kalıcı kılmak için tıklayın.",
+    "description":"Tooltip when hovering over the padlock in the dynamic filtering pane."
+  },
+  "popupTipRevertRules":{
+    "message":"Değişikliklerinizi geri almak için tıklayın.",
+    "description":"Tooltip when hovering over the eraser in the dynamic filtering pane."
   },
   "popupAnyRulePrompt":{
     "message":"tümü",
@@ -101,6 +125,10 @@
   },
   "popup3pAnyRulePrompt":{
     "message":"3. taraf",
+    "description":""
+  },
+  "popup3pPassiveRulePrompt":{
+    "message":"3. taraf css\/resim",
     "description":""
   },
   "popupInlineScriptRulePrompt":{
@@ -139,9 +167,13 @@
     "message":"Çık",
     "description":"English: Quit"
   },
+  "pickerPreview":{
+    "message":"Ön İzleme",
+    "description":"Element picker preview mode: will cause the elements matching the current filter to be removed from the page"
+  },
   "pickerNetFilters":{
     "message":"Ağ süzgeçleri",
-    "description":"English: Net filters"
+    "description":"English: header for a type of filter in the element picker dialog"
   },
   "pickerCosmeticFilters":{
     "message":"Kozmetik süzgeçler",
@@ -163,6 +195,10 @@
     "message":"Engellenmiş reklam sayısını simge üzerinde göster",
     "description":"English: Show the number of blocked requests on the icon"
   },
+  "settingsTooltipsPrompt":{
+    "message":"İpuçlarını kapat",
+    "description":"A checkbox in the Settings pane"
+  },
   "settingsContextMenuPrompt":{
     "message":"Uygun olduğunda içerik menüsünü kullan",
     "description":"English: Make use of context menu where appropriate"
@@ -171,25 +207,49 @@
     "message":"Renk körü dostu",
     "description":"English: Color-blind friendly"
   },
+  "settingsCloudStorageEnabledPrompt":{
+    "message":"Bulut depo desteğini etkinleştir",
+    "description":""
+  },
   "settingsAdvancedUserPrompt":{
-    "message":"Deneyimli bir kullanıcıyım (<a href='https:\/\/github.com\/gorhill\/uBlock\/wiki\/Advanced-user-features'>Okunması gerekli<\/a>)",
-    "description":"English: "
+    "message":"Deneyimli kullanıcıyım (<a href='https:\/\/github.com\/gorhill\/uBlock\/wiki\/Advanced-user-features'>Okunması gerekir<\/a>)",
+    "description":""
+  },
+  "settingsAdvancedUserSettings":{
+    "message":"gelişmiş ayarlar",
+    "description":"For the tooltip of a link which gives access to advanced settings"
   },
   "settingsPrefetchingDisabledPrompt":{
     "message":"Kaynak ön getirimini devre dışı bırak (engellenmiş ağ isteklerine herhangi bir bağlantı kurulmasını engellemek için)",
     "description":"English: "
   },
   "settingsHyperlinkAuditingDisabledPrompt":{
-    "message":"Köprü denetimini\/İşaretçiyi devre dışı bırak",
+    "message":"Köprü denetimini devre dışı bırak",
     "description":"English: "
   },
   "settingsWebRTCIPAddressHiddenPrompt":{
     "message":"WebRTC'nin yerel IP adreslerini sızdırmasını engelle",
     "description":"English: "
   },
-  "settingsExperimentalPrompt":{
-    "message":"Deneysel özellikleri etkinleştir (<a href='https:\/\/github.com\/gorhill\/uBlock\/wiki\/Experimental-features'>Hakkında<\/a>)",
-    "description":"English: Enable experimental features"
+  "settingPerSiteSwitchGroup":{
+    "message":"Varsayılan davranış",
+    "description":""
+  },
+  "settingPerSiteSwitchGroupSynopsis":{
+    "message":"Bu varsayılan davranışlar site bazında geçersiz kılınabilir",
+    "description":""
+  },
+  "settingsNoCosmeticFilteringPrompt":{
+    "message":"Kozmetik süzgeçleri devre dışı bırak",
+    "description":""
+  },
+  "settingsNoLargeMediaPrompt":{
+    "message":"Belirlenenden büyük medya öğelerini engelle {{input:number}} kB",
+    "description":""
+  },
+  "settingsNoRemoteFontsPrompt":{
+    "message":"Uzak yazıtiplerini engelle",
+    "description":""
   },
   "settingsStorageUsed":{
     "message":"Kullanılan Alan: {{value}} bayt",
@@ -205,23 +265,23 @@
   },
   "3pListsOfBlockedHostsPrompt":{
     "message":"{{netFilterCount}} ağ süzgeci + {{cosmeticFilterCount}} kozmetik süzgeç:",
-    "description":"English: {{netFilterCount}} network filters ＋ {{cosmeticFilterCount}} cosmetic filters from:"
+    "description":"Appears at the top of the _3rd-party filters_ pane"
   },
   "3pListsOfBlockedHostsPerListStats":{
     "message":"{{total}} taneden {{used}} adedi kullanıldı",
-    "description":"English: {{used}} used out of {{total}}"
+    "description":"Appears aside each filter list in the _3rd-party filters_ pane"
   },
   "3pAutoUpdatePrompt1":{
     "message":"Süzgeç listelerini otomatik güncelle.",
-    "description":"English: Auto-update filter lists."
+    "description":"A checkbox in the _3rd-party filters_ pane"
   },
   "3pUpdateNow":{
     "message":"Şimdi güncelle",
-    "description":"English: Update now"
+    "description":"A button in the in the _3rd-party filters_ pane"
   },
   "3pPurgeAll":{
     "message":"Tüm önbelleği temizle",
-    "description":"English: Purge all caches"
+    "description":"A button in the in the _3rd-party filters_ pane"
   },
   "3pParseAllABPHideFiltersPrompt1":{
     "message":"Kozmetik süzgeçleri incele ve uygula.",
@@ -229,7 +289,15 @@
   },
   "3pParseAllABPHideFiltersInfo":{
     "message":"<p>Bu seçenek <a href=\"https:\/\/adblockplus.org\/en\/faq_internal#elemhide\"> Adblock Plus-uyumlu &ldquo;öğe gizleme&rdquo; süzgeçlerinin<\/a> işlenmesini ve uygulanmasını sağlar. Bu süzgeçler aslında kozmetiktir, bir web sayfasında görsel rahatsızlık yaratan ve ağ isteği-tabanlı süzme motoru tarafından engellenemeyecek olan öğelerin gizlenmesine yarar.<\/p><p>Bu özelliği etkinleştirmek  uBlock₀'in bellek kullanımını artırır.<\/p>",
-    "description":"English: see English messages.json"
+    "description":"Describes the purpose of the 'Parse and enforce cosmetic filters' feature."
+  },
+  "3pIgnoreGenericCosmeticFilters":{
+    "message":"Genel kozmetik süzgeçleri yoksay.",
+    "description":"This will cause uBO to ignore all generic cosmetic filters."
+  },
+  "3pIgnoreGenericCosmeticFiltersInfo":{
+    "message":"<p>Genel kozmetik süzgeçler tüm web sayfalarına uygulanan kozmetik süzgeçlerdir.<p>uBlock₀ tarafından verimli bir şekilde işlenmesine rağmen genel kozmetik süzgeçler bazı web sayfalarında ölçülebilir bellek ve CPU ek yüküne neden olabilir, özellikle büyük ve uzun süreli olanlar.<p>Bu seçeneğin etkinleştirmesi, web sayfalarına eklenen genel kozmetik süzgeçlerin işlenmesinden kaynaklı bellek ve CPU ek yükünü ortadan kaldıracaktır ve ek olarak uBlock₀'un kendi bellek izini de azaltacaktır.<p>Daha az güçlü cihazlarda bu seçeneğin etkinleştirilmesi tavsiye edilir.",
+    "description":"Describes the purpose of the 'Ignore generic cosmetic filters' feature."
   },
   "3pListsOfBlockedHostsHeader":{
     "message":"Engellenmiş alan adlarının listesi",
@@ -271,25 +339,21 @@
     "message":"Her satırda bir URL. &lsquo;!&rsquo; ile başlayan satırlar göz ardı edilir. Geçersiz URL'ler sessizce yoksayılır.",
     "description":"English: One URL per line. Lines prefixed with &lsquo;!&rsquo; will be ignored. Invalid URLs will be silently ignored."
   },
-  "3pExternalListsApply":{
-    "message":"Uygula",
-    "description":"English: Parse"
-  },
-  "3pExternalListPurge":{
-    "message":"önbelleği temizle",
-    "description":"English: purge cache"
-  },
-  "3pExternalListNew":{
-    "message":"yeni sürüm mevcut",
-    "description":"English: new version available"
-  },
   "3pExternalListObsolete":{
-    "message":"eski",
-    "description":"English: outdated"
+    "message":"Güncel değil.",
+    "description":"used as a tooltip for the out-of-date icon beside a list"
   },
   "3pLastUpdate":{
-    "message":"Son güncelleme: {{ago}}",
-    "description":"English: Last update: {{ago}}, where 'ago' will be replaced with something like '2 days ago'"
+    "message":"Son güncelleme: {{ago}}.\nGüncelleştirmeye zorlamak için tıklayın.",
+    "description":"used as a tooltip for the clock icon beside a list"
+  },
+  "3pUpdating":{
+    "message":"Güncelleniyor...",
+    "description":"used as a tooltip for the spinner icon beside a list"
+  },
+  "3pNetworkError":{
+    "message":"Bir ağ hatası kaynağın güncellenmesini engelledi.",
+    "description":"used as a tooltip for error icon beside a list"
   },
   "1pFormatHint":{
     "message":"Her satırda bir süzgeç. Süzgeç bir alan adı veya Adblock Plus uyumlu bir süzgeç olabilir. &lsquo;!&rsquo; ile başlayan satırlar yok sayılır.",
@@ -360,8 +424,8 @@
     "description":"English: dynamic rule syntax and full documentation."
   },
   "whitelistPrompt":{
-    "message":"uBlock₀'in devre dışı bırakılacağı alan adları listeniz. Her satırda bir girdi. Geçersiz alan adları sessizce yok sayılır.",
-    "description":"English: Your list of host names for which uBlock₀ will be disabled. One host name per line. Invalid host names will be silently ignored."
+    "message":"Hangi alan adları için uBlock₀'in devre dışı olacağını belirten listeniz. Satır başına bir girdi. Geçersiz alan adları sessizce yok sayılır.",
+    "description":"English: An overview of the content of the dashboard's Whitelist pane."
   },
   "whitelistImport":{
     "message":"İçe aktar ve sonuna ekle",
@@ -475,6 +539,10 @@
     "message":"Viki",
     "description":"English: project' wiki on Github"
   },
+  "aboutSupport":{
+    "message":"Destek",
+    "description":"A link for where to get support"
+  },
   "aboutCode":{
     "message":"Kaynak kodu (GPLv3)",
     "description":"English: Source code (GPLv3)"
@@ -485,10 +553,10 @@
   },
   "aboutBackupDataButton":{
     "message":"Dosyaya yedekle",
-    "description":"English: Backup to file"
+    "description":"Text for button to create a backup of all settings"
   },
   "aboutBackupFilename":{
-    "message":"ublock-yedek_{{datetime}}.txt",
+    "message":"ublock-yedeğim_{{datetime}}.txt",
     "description":"English: my-ublock-backup_{{datetime}}.txt"
   },
   "aboutRestoreDataButton":{
@@ -512,8 +580,8 @@
     "description":"Message asking user to confirm reset"
   },
   "errorCantConnectTo":{
-    "message":"{{url}} adresine bağlanılamıyor",
-    "description":"English: Network error: unable to connect to {{url}}"
+    "message":"Ağ hatası: {{msg}}",
+    "description":"English: Network error: {{msg}}"
   },
   "subscriberConfirm":{
     "message":"uBlock₀: Aşağıdaki URL, özel süzgeç listenize eklensin mi?\n\nBaşlık: \"{{title}}\"\nURL: {{url}}",
@@ -548,7 +616,7 @@
     "description":"Firefox\/Fennec-specific: Show Dashboard"
   },
   "showNetworkLogButton":{
-    "message":"Günlüğü Göster",
+    "message":"Günlükçüyü Göster",
     "description":"Firefox\/Fennec-specific: Show Logger"
   },
   "fennecMenuItemBlockingOff":{
@@ -556,12 +624,16 @@
     "description":"Firefox-specific: appears as 'uBlock₀ (off)'"
   },
   "docblockedPrompt1":{
-    "message":"uBlock aşağıdaki sayfanın yüklenmesini engelledi:",
+    "message":"uBlock₀ aşağıdaki sayfanın yüklenmesini engelledi:",
     "description":"English: uBlock₀ has prevented the following page from loading:"
   },
   "docblockedPrompt2":{
     "message":"Aşağıdaki süzgeçten dolayı",
     "description":"English: Because of the following filter"
+  },
+  "docblockedNoParamsPrompt":{
+    "message":"parametresiz",
+    "description":"label to be used for the parameter-less URL: https:\/\/cloud.githubusercontent.com\/assets\/585534\/9832014\/bfb1b8f0-593b-11e5-8a27-fba472a5529a.png"
   },
   "docblockedFoundIn":{
     "message":"Bulunduğu liste:",
@@ -586,6 +658,50 @@
   "docblockedDisablePermanent":{
     "message":"Kalıcı olarak",
     "description":"English: Permanently"
+  },
+  "cloudPush":{
+    "message":"Bulut depoya aktar",
+    "description":"tooltip"
+  },
+  "cloudPull":{
+    "message":"Bulut depodan içe aktar",
+    "description":"tooltip"
+  },
+  "cloudPullAndMerge":{
+    "message":"Bulut depodan içe aktar ve şu anki ayarlarla birleştir",
+    "description":"tooltip"
+  },
+  "cloudNoData":{
+    "message":"...\n...",
+    "description":""
+  },
+  "cloudDeviceNamePrompt":{
+    "message":"Bu cihazın adı:",
+    "description":"used as a prompt for the user to provide a custom device name"
+  },
+  "advancedSettingsWarning":{
+    "message":"Uyarı! Bu ayarları değiştirme sorumluluğu size aittir.",
+    "description":"A warning to users at the top of 'Advanced settings' page"
+  },
+  "genericSubmit":{
+    "message":"Gönder",
+    "description":"for generic 'Submit' buttons"
+  },
+  "genericApplyChanges":{
+    "message":"Değişiklikleri uygula",
+    "description":"for generic 'Apply changes' buttons"
+  },
+  "genericRevert":{
+    "message":"Geri al",
+    "description":"for generic 'Revert' buttons"
+  },
+  "genericBytes":{
+    "message":"byte",
+    "description":""
+  },
+  "contextMenuTemporarilyAllowLargeMediaElements":{
+    "message":"Geçici olarak büyük medya öğelerine izin ver",
+    "description":"A context menu entry, present when large media elements have been blocked on the current site"
   },
   "dummy":{
     "message":"Bu girdi en sonda olmalıdır",

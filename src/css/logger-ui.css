@@ -98,6 +98,9 @@ textarea {
 #netInspector.f #filterButton {
     opacity: 1;
     }
+#netInspector #filterInput {
+    min-width: 18em;
+    }
 #netInspector #filterInput.bad {
     background-color: #fee;
     }
@@ -154,7 +157,7 @@ body.colorBlind #netInspector tr.nooped {
 body.colorBlind #netInspector tr.allowed {
     background-color: rgba(255, 194, 57, 0.1)
     }
-#netInspector tr.cb {
+#netInspector tr.cosmetic, #netInspector tr.redirect {
     background-color: rgba(255, 255, 0, 0.1);
     }
 #netInspector tr.maindoc {
@@ -220,7 +223,8 @@ body:not(.popupOn) #netInspector tr.canMtx td:nth-of-type(2):hover {
     cursor: zoom-in;
     }
 #netInspector tr.cat_net td:nth-of-type(4),
-#netInspector tr.cat_cosmetic td:nth-of-type(4) {
+#netInspector tr.cat_cosmetic td:nth-of-type(4),
+#netInspector tr.cat_redirect td:nth-of-type(4) {
     font: 12px monospace;
     text-align: center;
     white-space: nowrap;
@@ -450,6 +454,7 @@ body[dir="rtl"] #netFilteringDialog .dialog > div.headers > span.tools {
     border: 1px solid #ddc;
     border-radius: 4px;
     color: #888;
+    cursor: pointer;
     font-size: 1.8em;
     margin: 0.1em;
     padding: 0.25em 0.5em;
@@ -518,7 +523,8 @@ body.colorBlind #netFilteringDialog .dialog > div.containers > div.dynamic tr.en
 body.colorBlind #netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action.own.allow {
     background-color: rgba(255, 194, 57, 1);
     }
-#netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action.own.noop {
+#netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action.own.noop,
+body.colorBlind #netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action.own.noop {
     background-color: rgba(108, 108, 108, 1);
     }
 #netFilteringDialog .dialog > div.containers > div.dynamic tr.entry > td > div.action.own.block {
@@ -570,7 +576,9 @@ body.colorBlind  #netFilteringDialog .dialog > div.containers > div.dynamic tr.e
     }
 #filterFinderDialog .dialog code {
     background: #eee;
+    font-size: 85%;
     padding: 3px;
+    word-break: break-all;
     }
 #filterFinderDialog .dialog ul {
     font-size: larger;

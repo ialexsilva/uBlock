@@ -33,11 +33,15 @@
   },
   "statsPageName":{
     "message":"uBlock₀ — Tīkla pieprasījumu žurnāls",
-    "description":"Title for the network request log window"
+    "description":"Title for the logger window"
   },
   "aboutPageName":{
     "message":"Par",
     "description":"appears as tab name in dashboard"
+  },
+  "advancedSettingsPageName":{
+    "message":"Papildu iestatījumi",
+    "description":"Title for the advanced settings page"
   },
   "popupPowerSwitchInfo":{
     "message":"Klikšķis: atslēgt\/ieslēgt uBlock₀ šajā vietnē.\n\nCtrl+klikšķis: atslēgt uBlock₀ tikai šai lapai.",
@@ -67,29 +71,49 @@
     "message":"Noklikšķiniet, lai atvērtu vadības paneli",
     "description":"English: Click to open the dashboard"
   },
+  "popupTipZapper":{
+    "message":"Enter element zapper mode",
+    "description":"Tooltip for the element-zapper icon in the popup panel"
+  },
   "popupTipPicker":{
     "message":"Ienākt elementa atlasītāju režīmā",
     "description":"English: Enter element picker mode"
   },
   "popupTipLog":{
     "message":"Doties uz pieprasījumu žurnālu",
-    "description":"English: Go to request log"
+    "description":"Tooltip used for the logger icon in the panel"
   },
   "popupTipNoPopups":{
-    "message":"Ieslēgt\/Izslēgt uznirstošos logus šajā vietnē",
-    "description":"English: Toggle the blocking of all popups for this site"
+    "message":"Pārslēgt uznirstošo logu bloķēšanu šajā vietnē",
+    "description":"Tooltip for the no-popups per-site switch"
   },
-  "popupTipNoStrictBlocking":{
-    "message":"Ieslēgt\/Izslēgt stingro bloķēšanu šai vietnei",
-    "description":"English: Toggle strict blocking for this site"
+  "popupTipNoLargeMedia":{
+    "message":"Pārslēgt lielu multivides elementu bloķēšanu šajā vietnē",
+    "description":"Tooltip for the no-large-media per-site switch"
   },
   "popupTipNoCosmeticFiltering":{
-    "message":"Ieslēgt\/Izslēgt kosmētikas filtrus šai vietnei",
-    "description":"English: Toggle cosmetic filtering for this site"
+    "message":"Pārslēgt kosmētisko filtrēšanu šajā vietnē",
+    "description":"Tooltip for the no-cosmetic-filtering per-site switch"
   },
   "popupTipNoRemoteFonts":{
-    "message":"Pārslēgt ārējo fontu bloķēšanu šai vietnei",
-    "description":"English: Toggle the blocking of remote fonts for this site"
+    "message":"Pārslēgt ārējo fontu bloķēšanu šajā vietnē",
+    "description":"Tooltip for the no-remote-fonts per-site switch"
+  },
+  "popupTipGlobalRules":{
+    "message":"Globālie ierobežojumi: šī kolonna paredzēta ierobežojumiem, kas attieksies uz visām mājaslapām.",
+    "description":"Tooltip when hovering the top-most cell of the global-rules column."
+  },
+  "popupTipLocalRules":{
+    "message":"Vietējie ierobežojumi: šī kolonna paredzēta ierobežojumiem, kas attieksies tikai uz konkrēto mājaslapu.\nVietējie ierobežojumi pārraksta globālos ierobežojumus.",
+    "description":"Tooltip when hovering the top-most cell of the local-rules column."
+  },
+  "popupTipSaveRules":{
+    "message":"Nokliķšķināt šeit, lai saglabātu izmaiņas.",
+    "description":"Tooltip when hovering over the padlock in the dynamic filtering pane."
+  },
+  "popupTipRevertRules":{
+    "message":"Noklikšķināt šeit, lai atceltu izmaiņas.",
+    "description":"Tooltip when hovering over the eraser in the dynamic filtering pane."
   },
   "popupAnyRulePrompt":{
     "message":"Visi",
@@ -101,6 +125,10 @@
   },
   "popup3pAnyRulePrompt":{
     "message":"No trešajām pusēm",
+    "description":""
+  },
+  "popup3pPassiveRulePrompt":{
+    "message":"3rd-party css\/attēli",
     "description":""
   },
   "popupInlineScriptRulePrompt":{
@@ -139,9 +167,13 @@
     "message":"Iziet",
     "description":"English: Quit"
   },
+  "pickerPreview":{
+    "message":"Priekšskatījums",
+    "description":"Element picker preview mode: will cause the elements matching the current filter to be removed from the page"
+  },
   "pickerNetFilters":{
     "message":"Resursu filtri",
-    "description":"English: Net filters"
+    "description":"English: header for a type of filter in the element picker dialog"
   },
   "pickerCosmeticFilters":{
     "message":"Vizuālie filtri",
@@ -163,6 +195,10 @@
     "message":"Parādīt bloķēto pieprasījumu skaitu uz ikonas",
     "description":"English: Show the number of blocked requests on the icon"
   },
+  "settingsTooltipsPrompt":{
+    "message":"Atslēgt rīka padomus (tooltips)",
+    "description":"A checkbox in the Settings pane"
+  },
   "settingsContextMenuPrompt":{
     "message":"Izmantot konteksta izvēlni vajadzības gadījumā",
     "description":"English: Make use of context menu where appropriate"
@@ -171,9 +207,17 @@
     "message":"Daltoniķiem draudzīgs",
     "description":"English: Color-blind friendly"
   },
+  "settingsCloudStorageEnabledPrompt":{
+    "message":"Aktivizēt mākoņdatu glabāšanas atbalstu",
+    "description":""
+  },
   "settingsAdvancedUserPrompt":{
     "message":"Es esmu pieredzējis lietotājs (<a href='https:\/\/github.com\/gorhill\/uBlock\/wiki\/Advanced-user-features'>Vēlams izlasīt<\/a>)",
-    "description":"English: "
+    "description":""
+  },
+  "settingsAdvancedUserSettings":{
+    "message":"papildu iestatījumi",
+    "description":"For the tooltip of a link which gives access to advanced settings"
   },
   "settingsPrefetchingDisabledPrompt":{
     "message":"Atslēgt pirmsielādi (lai novērstu bloķētus tīkla pieprasījumus)",
@@ -187,9 +231,25 @@
     "message":"Novērst savas IP adreses noplūdi ar WebRTC",
     "description":"English: "
   },
-  "settingsExperimentalPrompt":{
-    "message":"Iespējot eksperimentālas iespējas (<a href='https:\/\/github.com\/gorhill\/uBlock\/wiki\/Experimental-features'>Sīkāk šeit<\/a>)",
-    "description":"English: Enable experimental features"
+  "settingPerSiteSwitchGroup":{
+    "message":"Noklusējuma darbība",
+    "description":""
+  },
+  "settingPerSiteSwitchGroupSynopsis":{
+    "message":"Šos uzstādījumus var mainīt katrai vietnei atsevišķi",
+    "description":""
+  },
+  "settingsNoCosmeticFilteringPrompt":{
+    "message":"Atslēgt kosmētiskos filtrus",
+    "description":""
+  },
+  "settingsNoLargeMediaPrompt":{
+    "message":"Bloķēt multivides elementus kas lielāki par {{input:number}} kB",
+    "description":""
+  },
+  "settingsNoRemoteFontsPrompt":{
+    "message":"Bloķēt ārējos fontus",
+    "description":""
   },
   "settingsStorageUsed":{
     "message":"Izmantotais krātuves lielums: {{value}} baiti",
@@ -205,23 +265,23 @@
   },
   "3pListsOfBlockedHostsPrompt":{
     "message":"{{netFilterCount}} tīkla filtri ＋ {{cosmeticFilterCount}} kosmētikas filtri no:",
-    "description":"English: {{netFilterCount}} network filters ＋ {{cosmeticFilterCount}} cosmetic filters from:"
+    "description":"Appears at the top of the _3rd-party filters_ pane"
   },
   "3pListsOfBlockedHostsPerListStats":{
     "message":"{{used}} izmanto no {{total}}",
-    "description":"English: {{used}} used out of {{total}}"
+    "description":"Appears aside each filter list in the _3rd-party filters_ pane"
   },
   "3pAutoUpdatePrompt1":{
     "message":"Automātiski atjaunināt filtra sarakstus.",
-    "description":"English: Auto-update filter lists."
+    "description":"A checkbox in the _3rd-party filters_ pane"
   },
   "3pUpdateNow":{
     "message":"Atjaunināt tūlīt",
-    "description":"English: Update now"
+    "description":"A button in the in the _3rd-party filters_ pane"
   },
   "3pPurgeAll":{
     "message":"Visas kešatmiņas iztīrīšana",
-    "description":"English: Purge all caches"
+    "description":"A button in the in the _3rd-party filters_ pane"
   },
   "3pParseAllABPHideFiltersPrompt1":{
     "message":"Apstrādāt un izpildīt kosmētikas filtrus.",
@@ -229,7 +289,15 @@
   },
   "3pParseAllABPHideFiltersInfo":{
     "message":"<p>Šī opcija iespējo apstrādāt un ieviest ar <a href=\"https:\/\/adblockplus.org\/en\/faq_internal#elemhide\"> Adblock Plus saderīgus &ldquo;elementu paslēpšanas&rdquo;<\/a> filtrus. Šie filtri ir būtībā kosmētiski, tie kalpo, lai paslēptu tīmekļa lapu elementus, kas tiek uzskatīti par vizuālu traucējumu, un kas nevar būt nobloķēti ar pieprasījumu balstītu filtrēšanas programmu.<\/p><p>Šī līdzekļa iespējošana palielina <i>uBlock₀<\/i> izmantojamās atmiņas daudzumu.<\/p>",
-    "description":"English: see English messages.json"
+    "description":"Describes the purpose of the 'Parse and enforce cosmetic filters' feature."
+  },
+  "3pIgnoreGenericCosmeticFilters":{
+    "message":"Ignorēt vispārīgos kosmētiskos filtrus",
+    "description":"This will cause uBO to ignore all generic cosmetic filters."
+  },
+  "3pIgnoreGenericCosmeticFiltersInfo":{
+    "message":"<p>Generic cosmetic filters are those cosmetic filters which are meant to apply on all web sites.<p>Though handled efficiently by uBlock₀, generic cosmetic filters may still contribute measurable memory and CPU overhead on some web pages, especially for large and long-lived ones.<p>Enabling this option will eliminate the memory and CPU overhead added to web pages as a result of handling generic cosmetic filters, and also lower the memory footprint of uBlock₀ itself.<p>It is recommended to enable this option on less powerful devices.",
+    "description":"Describes the purpose of the 'Ignore generic cosmetic filters' feature."
   },
   "3pListsOfBlockedHostsHeader":{
     "message":"Bloķēto hostu saraksti",
@@ -271,25 +339,21 @@
     "message":"Vienu URL katrā rindiņā. Rindiņas, kuras sākas ar &lsquo;!&rsquo; tiks ignorētas. Nederīgs URL tiks ignorēts bez brīdinājuma.",
     "description":"English: One URL per line. Lines prefixed with &lsquo;!&rsquo; will be ignored. Invalid URLs will be silently ignored."
   },
-  "3pExternalListsApply":{
-    "message":"Apstrādāt",
-    "description":"English: Parse"
-  },
-  "3pExternalListPurge":{
-    "message":"iztīrīt kešatmiņu",
-    "description":"English: purge cache"
-  },
-  "3pExternalListNew":{
-    "message":"pieejama jauna versija",
-    "description":"English: new version available"
-  },
   "3pExternalListObsolete":{
     "message":"novecojis",
-    "description":"English: outdated"
+    "description":"used as a tooltip for the out-of-date icon beside a list"
   },
   "3pLastUpdate":{
     "message":"Pēdējo reizi atjaunināts: {{ago}}",
-    "description":"English: Last update: {{ago}}, where 'ago' will be replaced with something like '2 days ago'"
+    "description":"used as a tooltip for the clock icon beside a list"
+  },
+  "3pUpdating":{
+    "message":"Updating...",
+    "description":"used as a tooltip for the spinner icon beside a list"
+  },
+  "3pNetworkError":{
+    "message":"A network error prevented the resource from being updated.",
+    "description":"used as a tooltip for error icon beside a list"
   },
   "1pFormatHint":{
     "message":"Vienu filtru katrā rindā. Filtrs var būt vienkārši resursa adrese, vai saderīgs ar Adblock Plus filtrs. Rindiņas, kuras sākas ar &lsquo;!&rsquo; tiks ignorētas.",
@@ -361,7 +425,7 @@
   },
   "whitelistPrompt":{
     "message":"Saraksts ar interneta resursiem, kuriem tiks atslēgts uBlock₀. Viens ieraksts katrā rindiņā. Nederīgi interneta resursu nosaukumi tiks ignorēti bez brīdinājuma.",
-    "description":"English: Your list of host names for which uBlock₀ will be disabled. One host name per line. Invalid host names will be silently ignored."
+    "description":"English: An overview of the content of the dashboard's Whitelist pane."
   },
   "whitelistImport":{
     "message":"Importēt un pievienot",
@@ -475,6 +539,10 @@
     "message":"Wiki",
     "description":"English: project' wiki on Github"
   },
+  "aboutSupport":{
+    "message":"Atbalsts",
+    "description":"A link for where to get support"
+  },
   "aboutCode":{
     "message":"Pirmkods (GPLv3)",
     "description":"English: Source code (GPLv3)"
@@ -485,7 +553,7 @@
   },
   "aboutBackupDataButton":{
     "message":"Saglabāt iestatījumus failā",
-    "description":"English: Backup to file"
+    "description":"Text for button to create a backup of all settings"
   },
   "aboutBackupFilename":{
     "message":"my-ublock-backup_{{datetime}}.txt",
@@ -513,7 +581,7 @@
   },
   "errorCantConnectTo":{
     "message":"Nevar izveidot savienojumu ar {{url}}",
-    "description":"English: Network error: unable to connect to {{url}}"
+    "description":"English: Network error: {{msg}}"
   },
   "subscriberConfirm":{
     "message":"uBlock₀: Pievienot sekojošo URL Jūsu lietotāja filtru sarakstiem?\n\nNosaukums: \"{{title}}\"\nURL: {{url}}",
@@ -563,6 +631,10 @@
     "message":"Sakarā ar šādu filtru",
     "description":"English: Because of the following filter"
   },
+  "docblockedNoParamsPrompt":{
+    "message":"bez parametriem",
+    "description":"label to be used for the parameter-less URL: https:\/\/cloud.githubusercontent.com\/assets\/585534\/9832014\/bfb1b8f0-593b-11e5-8a27-fba472a5529a.png"
+  },
   "docblockedFoundIn":{
     "message":"Atrodas:",
     "description":"English: List of filter list names follows"
@@ -586,6 +658,50 @@
   "docblockedDisablePermanent":{
     "message":"Paliekoši",
     "description":"English: Permanently"
+  },
+  "cloudPush":{
+    "message":"Eksports uz mākoņdatu glabātuvi",
+    "description":"tooltip"
+  },
+  "cloudPull":{
+    "message":"Imports no mākoņdatu glabātuves",
+    "description":"tooltip"
+  },
+  "cloudPullAndMerge":{
+    "message":"Importēt no mākoņdatu glabātuves un apvienot ar pašreizējiem iestatījumiem",
+    "description":"tooltip"
+  },
+  "cloudNoData":{
+    "message":"...\n...",
+    "description":""
+  },
+  "cloudDeviceNamePrompt":{
+    "message":"Šīs ierīces nosaukums:",
+    "description":"used as a prompt for the user to provide a custom device name"
+  },
+  "advancedSettingsWarning":{
+    "message":"Warning! Change these advanced settings at your own risk.",
+    "description":"A warning to users at the top of 'Advanced settings' page"
+  },
+  "genericSubmit":{
+    "message":"Iesniegt",
+    "description":"for generic 'Submit' buttons"
+  },
+  "genericApplyChanges":{
+    "message":"Apply changes",
+    "description":"for generic 'Apply changes' buttons"
+  },
+  "genericRevert":{
+    "message":"Atgriezt",
+    "description":"for generic 'Revert' buttons"
+  },
+  "genericBytes":{
+    "message":"baiti",
+    "description":""
+  },
+  "contextMenuTemporarilyAllowLargeMediaElements":{
+    "message":"Īslaicīgi atļaut lielos multivides elementus",
+    "description":"A context menu entry, present when large media elements have been blocked on the current site"
   },
   "dummy":{
     "message":"Šim ierakstam ir jābūt pēdējam",

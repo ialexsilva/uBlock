@@ -32,12 +32,16 @@
     "description":"appears as tab name in dashboard"
   },
   "statsPageName":{
-    "message":"uBlock₀ — Tinklo užklausų žurnalas",
-    "description":"Title for the network request log window"
+    "message":"uBlock₀ — Žurnalas",
+    "description":"Title for the logger window"
   },
   "aboutPageName":{
     "message":"Apie",
     "description":"appears as tab name in dashboard"
+  },
+  "advancedSettingsPageName":{
+    "message":"Sudėtingesni nustatymai",
+    "description":"Title for the advanced settings page"
   },
   "popupPowerSwitchInfo":{
     "message":"Spustelėjimas: įjungti\/išjungti uBlock₀ šiam puslapiui.\n\nVald+spustelėjimas: išjungti uBlock₀ tik šiam puslapiui.",
@@ -67,29 +71,49 @@
     "message":"Spustelėkite prietaisų skydui atverti",
     "description":"English: Click to open the dashboard"
   },
+  "popupTipZapper":{
+    "message":"Atverti elementų trynimo veikseną",
+    "description":"Tooltip for the element-zapper icon in the popup panel"
+  },
   "popupTipPicker":{
     "message":"Atverti elementų parinkimo veikseną",
     "description":"English: Enter element picker mode"
   },
   "popupTipLog":{
-    "message":"Eiti į užklausų žurnalą",
-    "description":"English: Go to request log"
+    "message":"Atverti žurnalą",
+    "description":"Tooltip used for the logger icon in the panel"
   },
   "popupTipNoPopups":{
     "message":"Perjungti visų iškylančiųjų langų blokavimą šiame puslapyje",
-    "description":"English: Toggle the blocking of all popups for this site"
+    "description":"Tooltip for the no-popups per-site switch"
   },
-  "popupTipNoStrictBlocking":{
-    "message":"Perjungti griežtą blokavimą šiame puslapyje",
-    "description":"English: Toggle strict blocking for this site"
+  "popupTipNoLargeMedia":{
+    "message":"Perjungti didelių medijos elementų blokavimą šiame puslapyje",
+    "description":"Tooltip for the no-large-media per-site switch"
   },
   "popupTipNoCosmeticFiltering":{
     "message":"Perjungti kosmetinį filtravimą šiame puslapyje",
-    "description":"English: Toggle cosmetic filtering for this site"
+    "description":"Tooltip for the no-cosmetic-filtering per-site switch"
   },
   "popupTipNoRemoteFonts":{
     "message":"Perjungti nuotolinių šriftų blokavimą šiame puslapyje",
-    "description":"English: Toggle the blocking of remote fonts for this site"
+    "description":"Tooltip for the no-remote-fonts per-site switch"
+  },
+  "popupTipGlobalRules":{
+    "message":"Globalios taisyklės: ši skiltis skirta visiems puslapiams taikomoms taisyklėms.",
+    "description":"Tooltip when hovering the top-most cell of the global-rules column."
+  },
+  "popupTipLocalRules":{
+    "message":"Vietinės taisyklės: ši skiltis skirta dabartiniam puslapiui taikomoms taisyklėms.\nVietinės taisyklės nustelbia globalias.",
+    "description":"Tooltip when hovering the top-most cell of the local-rules column."
+  },
+  "popupTipSaveRules":{
+    "message":"Spauskite pakeitimams padaryti pastoviais.",
+    "description":"Tooltip when hovering over the padlock in the dynamic filtering pane."
+  },
+  "popupTipRevertRules":{
+    "message":"Spauskite pakeitimams atstatyti.",
+    "description":"Tooltip when hovering over the eraser in the dynamic filtering pane."
   },
   "popupAnyRulePrompt":{
     "message":"visi",
@@ -101,6 +125,10 @@
   },
   "popup3pAnyRulePrompt":{
     "message":"trečios šalies",
+    "description":""
+  },
+  "popup3pPassiveRulePrompt":{
+    "message":"3-ios šalies css\/paveikslai",
     "description":""
   },
   "popupInlineScriptRulePrompt":{
@@ -139,9 +167,13 @@
     "message":"Baigti",
     "description":"English: Quit"
   },
+  "pickerPreview":{
+    "message":"Peržiūra",
+    "description":"Element picker preview mode: will cause the elements matching the current filter to be removed from the page"
+  },
   "pickerNetFilters":{
     "message":"Tinklo filtrai",
-    "description":"English: Net filters"
+    "description":"English: header for a type of filter in the element picker dialog"
   },
   "pickerCosmeticFilters":{
     "message":"Kosmetiniai filtrai",
@@ -163,6 +195,10 @@
     "message":"Rodyti blokuotų užklausų skaičių piktogramoje",
     "description":"English: Show the number of blocked requests on the icon"
   },
+  "settingsTooltipsPrompt":{
+    "message":"Išjungti paaiškinimus",
+    "description":"A checkbox in the Settings pane"
+  },
   "settingsContextMenuPrompt":{
     "message":"Kur tinka, naudoti kontekstinį meniu",
     "description":"English: Make use of context menu where appropriate"
@@ -171,25 +207,49 @@
     "message":"Draugiškas neskiriantiems spalvų",
     "description":"English: Color-blind friendly"
   },
+  "settingsCloudStorageEnabledPrompt":{
+    "message":"Įjungti nuotolinės saugyklos palaikymą",
+    "description":""
+  },
   "settingsAdvancedUserPrompt":{
-    "message":"Aš esu patyręs naudotojas (<a href='https:\/\/github.com\/gorhill\/uBlock\/wiki\/Advanced-user-features'>Privaloma perskaityti<\/a>)",
-    "description":"English: "
+    "message":"Aš esu patyręs naudotojas (<a href='https:\/\/github.com\/gorhill\/uBlock\/wiki\/Advanced-user-features'>privaloma perskaityti<\/a>)",
+    "description":""
+  },
+  "settingsAdvancedUserSettings":{
+    "message":"sudėtingesni nustatymai",
+    "description":"For the tooltip of a link which gives access to advanced settings"
   },
   "settingsPrefetchingDisabledPrompt":{
     "message":"Išjungti išankstinį gavimą (visiems blokuotų tinklo užklausų prisijungimams išvengti)",
     "description":"English: "
   },
   "settingsHyperlinkAuditingDisabledPrompt":{
-    "message":"Išjungti saitų auditą\/signalizavimą",
+    "message":"Išjungti saitų auditą",
     "description":"English: "
   },
   "settingsWebRTCIPAddressHiddenPrompt":{
     "message":"Neleisti WebRTC atskleisti vietinio IP adreso",
     "description":"English: "
   },
-  "settingsExperimentalPrompt":{
-    "message":"Įjungti eksperimentines funkcijas (<a href='https:\/\/github.com\/gorhill\/uBlock\/wiki\/Experimental-features'>Apie<\/a>)",
-    "description":"English: Enable experimental features"
+  "settingPerSiteSwitchGroup":{
+    "message":"Numatytoji elgsena",
+    "description":""
+  },
+  "settingPerSiteSwitchGroupSynopsis":{
+    "message":"Šios numatytosios elgsenos gali būti nustelbtos kiekvienam puslapiui atskirai",
+    "description":""
+  },
+  "settingsNoCosmeticFilteringPrompt":{
+    "message":"Išjungti kosmetinius filtrus",
+    "description":""
+  },
+  "settingsNoLargeMediaPrompt":{
+    "message":"Blokuoti medijos elementus didesnius nei {{input:number}} kB",
+    "description":""
+  },
+  "settingsNoRemoteFontsPrompt":{
+    "message":"Blokuoti nuotolinius šriftus",
+    "description":""
   },
   "settingsStorageUsed":{
     "message":"Naudojama vietos: {{value}} baitų",
@@ -205,23 +265,23 @@
   },
   "3pListsOfBlockedHostsPrompt":{
     "message":"Tinklo filtrų ({{netFilterCount}})  ＋ kosmetinių filtrų ({{cosmeticFilterCount}}) iš:",
-    "description":"English: {{netFilterCount}} network filters ＋ {{cosmeticFilterCount}} cosmetic filters from:"
+    "description":"Appears at the top of the _3rd-party filters_ pane"
   },
   "3pListsOfBlockedHostsPerListStats":{
     "message":"naudojama {{used}} iš {{total}}",
-    "description":"English: {{used}} used out of {{total}}"
+    "description":"Appears aside each filter list in the _3rd-party filters_ pane"
   },
   "3pAutoUpdatePrompt1":{
     "message":"Automatiškai atnaujinti filtrų sąrašus.",
-    "description":"English: Auto-update filter lists."
+    "description":"A checkbox in the _3rd-party filters_ pane"
   },
   "3pUpdateNow":{
     "message":"Atnaujinti dabar",
-    "description":"English: Update now"
+    "description":"A button in the in the _3rd-party filters_ pane"
   },
   "3pPurgeAll":{
     "message":"Valyti visus podėlius",
-    "description":"English: Purge all caches"
+    "description":"A button in the in the _3rd-party filters_ pane"
   },
   "3pParseAllABPHideFiltersPrompt1":{
     "message":"Analizuoti ir taikyti kosmetinius filtrus.",
@@ -229,7 +289,15 @@
   },
   "3pParseAllABPHideFiltersInfo":{
     "message":"<p>Ši nuostata įjungia <a href=\"https:\/\/adblockplus.org\/en\/faq_internal#elemhide\">Su Adblock Plus suderinamų „elementų slėpimo“ filtrų<\/a> analizę ir taikymą. Šie filtrai iš esmės yra kosmetiniai, jie naudojami tinklalapio elementams, kurie yra laikomi vaizdiniais nepatogumais ir kurių negalima užblokuoti tinklo užklausomis paremtais filtrais, paslėpti.<\/p><p>Šios nuostatos įjungimas padidina uBlock₀ atminties naudojimą.<\/p>",
-    "description":"English: see English messages.json"
+    "description":"Describes the purpose of the 'Parse and enforce cosmetic filters' feature."
+  },
+  "3pIgnoreGenericCosmeticFilters":{
+    "message":"Ignoruoti daugybinius kosmetinius filtrus.",
+    "description":"This will cause uBO to ignore all generic cosmetic filters."
+  },
+  "3pIgnoreGenericCosmeticFiltersInfo":{
+    "message":"<p>Daugybiniai kosmetiniai filtrai yra tokie kosmetiniai filtrai, kurie taikomi visoms svetainėms.<p>Nors uBlock₀ juos apdoroja efektyviai, daugybiniai kosmetiniai filtrai vis tiek gali prisidėti prie pamatuojamo atminties ir procesoriaus panaudojimo kai kuriose svetainėse, ypač didelėse ir ilgai gyvuojančiose.<p>Šio nustatymo įjungimas sumažins atminties ir procesoriaus naudojimą, kurį sukelia svetainės dėl daugybinių kosmetinių filtrų apdorojimo, bei sumažins bendrą uBlock₀ atminties naudojimą.<p>Rekomenduojama įjungti šį nustatymą mažiau galinguose įrenginiuose.",
+    "description":"Describes the purpose of the 'Ignore generic cosmetic filters' feature."
   },
   "3pListsOfBlockedHostsHeader":{
     "message":"Blokuotų serverių sąrašas",
@@ -271,25 +339,21 @@
     "message":"Vienas URL eilutėje. Eilutės pradėtos „!“ bus ignoruotos. Neteisingi URL bus tyliai ignoruoti.",
     "description":"English: One URL per line. Lines prefixed with &lsquo;!&rsquo; will be ignored. Invalid URLs will be silently ignored."
   },
-  "3pExternalListsApply":{
-    "message":"Analizuoti",
-    "description":"English: Parse"
-  },
-  "3pExternalListPurge":{
-    "message":"valyti podėlį",
-    "description":"English: purge cache"
-  },
-  "3pExternalListNew":{
-    "message":"prieinama nauja versija",
-    "description":"English: new version available"
-  },
   "3pExternalListObsolete":{
-    "message":"pasenęs",
-    "description":"English: outdated"
+    "message":"Pasenęs.",
+    "description":"used as a tooltip for the out-of-date icon beside a list"
   },
   "3pLastUpdate":{
-    "message":"Paskutinis atnaujinimas: {{ago}}",
-    "description":"English: Last update: {{ago}}, where 'ago' will be replaced with something like '2 days ago'"
+    "message":"Paskutinis atnaujinimas: {{ago}}.\nIeškoti atnaujinimo.",
+    "description":"used as a tooltip for the clock icon beside a list"
+  },
+  "3pUpdating":{
+    "message":"Atnaujinama...",
+    "description":"used as a tooltip for the spinner icon beside a list"
+  },
+  "3pNetworkError":{
+    "message":"Tinklo klaida sutrukdė atnaujinti resursą.",
+    "description":"used as a tooltip for error icon beside a list"
   },
   "1pFormatHint":{
     "message":"Vienas filtras eilutėje. Filtras gali būti paprastas serverio adresas, arba su Adblock Plus suderinamas filtras. Eilutės pradėtos „!“ bus ignoruotos. ",
@@ -360,8 +424,8 @@
     "description":"English: dynamic rule syntax and full documentation."
   },
   "whitelistPrompt":{
-    "message":"Serverių sąrašas, kuriems uBlock₀ bus išjungtas. Vienas įrašas eilutėje. Neteisingi serverių vardai bus tyliai ignoruoti.",
-    "description":"English: Your list of host names for which uBlock₀ will be disabled. One host name per line. Invalid host names will be silently ignored."
+    "message":"Baltojo sąrašo direktyvos nurodo, kurioms svetainėms uBlock Origin turėtų būti išjungtas. Vienas įrašas eilutėje. Neteisingos direktyvos bus tyliai ignoruotos ir užkomentuotos.",
+    "description":"English: An overview of the content of the dashboard's Whitelist pane."
   },
   "whitelistImport":{
     "message":"Importuoti ir papildyti",
@@ -475,6 +539,10 @@
     "message":"Viki",
     "description":"English: project' wiki on Github"
   },
+  "aboutSupport":{
+    "message":"Palaikymas",
+    "description":"A link for where to get support"
+  },
   "aboutCode":{
     "message":"Pirminis tekstas (GPLv3)",
     "description":"English: Source code (GPLv3)"
@@ -485,7 +553,7 @@
   },
   "aboutBackupDataButton":{
     "message":"Padaryti atsarginę kopiją į failą",
-    "description":"English: Backup to file"
+    "description":"Text for button to create a backup of all settings"
   },
   "aboutBackupFilename":{
     "message":"mano-ublock-atsarginė_kopija_{{datetime}}.txt",
@@ -512,8 +580,8 @@
     "description":"Message asking user to confirm reset"
   },
   "errorCantConnectTo":{
-    "message":"Nepavyko prisijungti prie {{url}}",
-    "description":"English: Network error: unable to connect to {{url}}"
+    "message":"Tinklo klaida: {{msg}}",
+    "description":"English: Network error: {{msg}}"
   },
   "subscriberConfirm":{
     "message":"uBlock₀: Pridėti šį URL į jūsų adaptuotų filtrų sąrašą?\n\nPavadinimas: „{{title}}“\nURL: {{url}}",
@@ -563,6 +631,10 @@
     "message":"Dėl šio filtro",
     "description":"English: Because of the following filter"
   },
+  "docblockedNoParamsPrompt":{
+    "message":"be parametrų",
+    "description":"label to be used for the parameter-less URL: https:\/\/cloud.githubusercontent.com\/assets\/585534\/9832014\/bfb1b8f0-593b-11e5-8a27-fba472a5529a.png"
+  },
   "docblockedFoundIn":{
     "message":"Rasta:",
     "description":"English: List of filter list names follows"
@@ -586,6 +658,50 @@
   "docblockedDisablePermanent":{
     "message":"Negrįžtamai",
     "description":"English: Permanently"
+  },
+  "cloudPush":{
+    "message":"Eksportuoti į nuotolinę saugyklą",
+    "description":"tooltip"
+  },
+  "cloudPull":{
+    "message":"Importuoti iš nuotolinės saugyklos",
+    "description":"tooltip"
+  },
+  "cloudPullAndMerge":{
+    "message":"Importuoti iš nuotolinės saugyklos ir sulieti su dabartiniais nustatymais",
+    "description":"tooltip"
+  },
+  "cloudNoData":{
+    "message":"...\n...",
+    "description":""
+  },
+  "cloudDeviceNamePrompt":{
+    "message":"Šio įrenginio vardas:",
+    "description":"used as a prompt for the user to provide a custom device name"
+  },
+  "advancedSettingsWarning":{
+    "message":"Įspėjimas! Keiskite šiuos sudėtingesnius nustatymus savo rizika.",
+    "description":"A warning to users at the top of 'Advanced settings' page"
+  },
+  "genericSubmit":{
+    "message":"Pateikti",
+    "description":"for generic 'Submit' buttons"
+  },
+  "genericApplyChanges":{
+    "message":"Taikyti pakeitimus",
+    "description":"for generic 'Apply changes' buttons"
+  },
+  "genericRevert":{
+    "message":"Atstatyti",
+    "description":"for generic 'Revert' buttons"
+  },
+  "genericBytes":{
+    "message":"baitai",
+    "description":""
+  },
+  "contextMenuTemporarilyAllowLargeMediaElements":{
+    "message":"Laikinai leisti didelius medijos elementus",
+    "description":"A context menu entry, present when large media elements have been blocked on the current site"
   },
   "dummy":{
     "message":"This entry must be the last one",

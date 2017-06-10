@@ -32,12 +32,16 @@
     "description":"appears as tab name in dashboard"
   },
   "statsPageName":{
-    "message":"uBlock₀ — Catatan Permintaan Jaringan",
-    "description":"Title for the network request log window"
+    "message":"uBlock₀ — Pencatat Log",
+    "description":"Title for the logger window"
   },
   "aboutPageName":{
     "message":"Tentang",
     "description":"appears as tab name in dashboard"
+  },
+  "advancedSettingsPageName":{
+    "message":"Pengaturan lanjutan",
+    "description":"Title for the advanced settings page"
   },
   "popupPowerSwitchInfo":{
     "message":"Klik: nonfungsi\/fungsikan uBlock₀ untuk situs ini.\n\nCtrl+klik: nonfungsikan uBlock₀ hanya di halaman ini.",
@@ -67,29 +71,49 @@
     "message":"Klik untuk membuka dasbor",
     "description":"English: Click to open the dashboard"
   },
+  "popupTipZapper":{
+    "message":"Enter element zapper mode",
+    "description":"Tooltip for the element-zapper icon in the popup panel"
+  },
   "popupTipPicker":{
     "message":"Memasuki mode pemilihan elemen",
     "description":"English: Enter element picker mode"
   },
   "popupTipLog":{
-    "message":"Kunjungi catatan permintaan",
-    "description":"English: Go to request log"
+    "message":"Buka pencatat log",
+    "description":"Tooltip used for the logger icon in the panel"
   },
   "popupTipNoPopups":{
     "message":"Alihkan pemblokiran semua popup untuk situs ini",
-    "description":"English: Toggle the blocking of all popups for this site"
+    "description":"Tooltip for the no-popups per-site switch"
   },
-  "popupTipNoStrictBlocking":{
-    "message":"Alihkan pemblokiran ketat untuk situs ini",
-    "description":"English: Toggle strict blocking for this site"
+  "popupTipNoLargeMedia":{
+    "message":"Aktifkan\/Nonaktifkan pemblokiran elemen media besar untuk situs ini",
+    "description":"Tooltip for the no-large-media per-site switch"
   },
   "popupTipNoCosmeticFiltering":{
     "message":"Alihkan penyaringan tampilan untuk situs ini",
-    "description":"English: Toggle cosmetic filtering for this site"
+    "description":"Tooltip for the no-cosmetic-filtering per-site switch"
   },
   "popupTipNoRemoteFonts":{
     "message":"Jungkit pemblokiran fon pihak ketiga untuk situs ini",
-    "description":"English: Toggle the blocking of remote fonts for this site"
+    "description":"Tooltip for the no-remote-fonts per-site switch"
+  },
+  "popupTipGlobalRules":{
+    "message":"Aturan global: kolom ini untuk aturan yang diterapkan ke semua situs.",
+    "description":"Tooltip when hovering the top-most cell of the global-rules column."
+  },
+  "popupTipLocalRules":{
+    "message":"Aturan lokal: kolom ini untuk aturan yang diterapkan ke situs yang sedang dikunjungi saja.\nAturan lokal menimpa aturan global.",
+    "description":"Tooltip when hovering the top-most cell of the local-rules column."
+  },
+  "popupTipSaveRules":{
+    "message":"Klik untuk membuat ubahan Anda permanen.",
+    "description":"Tooltip when hovering over the padlock in the dynamic filtering pane."
+  },
+  "popupTipRevertRules":{
+    "message":"Klik untuk membatalkan ubahan Anda.",
+    "description":"Tooltip when hovering over the eraser in the dynamic filtering pane."
   },
   "popupAnyRulePrompt":{
     "message":"semua",
@@ -101,6 +125,10 @@
   },
   "popup3pAnyRulePrompt":{
     "message":"pihak ketiga",
+    "description":""
+  },
+  "popup3pPassiveRulePrompt":{
+    "message":"css\/gambar pihak ketiga",
     "description":""
   },
   "popupInlineScriptRulePrompt":{
@@ -139,9 +167,13 @@
     "message":"Keluar",
     "description":"English: Quit"
   },
+  "pickerPreview":{
+    "message":"Pratinjau",
+    "description":"Element picker preview mode: will cause the elements matching the current filter to be removed from the page"
+  },
   "pickerNetFilters":{
     "message":"Filter jaringan",
-    "description":"English: Net filters"
+    "description":"English: header for a type of filter in the element picker dialog"
   },
   "pickerCosmeticFilters":{
     "message":"Filter tampilan",
@@ -163,6 +195,10 @@
     "message":"Tampilkan jumlah permintaan yang diblokir pada ikon",
     "description":"English: Show the number of blocked requests on the icon"
   },
+  "settingsTooltipsPrompt":{
+    "message":"Nonaktifkan tip alat",
+    "description":"A checkbox in the Settings pane"
+  },
   "settingsContextMenuPrompt":{
     "message":"Pergunakan menu konteks jika sesuai",
     "description":"English: Make use of context menu where appropriate"
@@ -171,25 +207,49 @@
     "message":"Ramah buta warna",
     "description":"English: Color-blind friendly"
   },
+  "settingsCloudStorageEnabledPrompt":{
+    "message":"Fungsikan dukungan penyimpanan awan",
+    "description":""
+  },
   "settingsAdvancedUserPrompt":{
-    "message":"Saya pengguna tingkat lanjut (<a href='https:\/\/github.com\/gorhill\/uBlock\/wiki\/Advanced-user-features'>Bacaan wajib<\/a>)",
-    "description":"English: "
+    "message":"Saya pengguna tingkat lanjut (<a href='https:\/\/github.com\/gorhill\/uBlock\/wiki\/Advanced-user-features'>bacaan wajib<\/a>)",
+    "description":""
+  },
+  "settingsAdvancedUserSettings":{
+    "message":"pengaturan lanjutan",
+    "description":"For the tooltip of a link which gives access to advanced settings"
   },
   "settingsPrefetchingDisabledPrompt":{
     "message":"Nonfungsikan pra-ambil (untuk mencegah sambungan apapun untuk permintaan jaringan yang diblokir)",
     "description":"English: "
   },
   "settingsHyperlinkAuditingDisabledPrompt":{
-    "message":"Nonfungsikan pengauditan\/suar pranala",
+    "message":"Nonfungsikan pengauditan pranala",
     "description":"English: "
   },
   "settingsWebRTCIPAddressHiddenPrompt":{
     "message":"Cegah WebRTC membocorkan alamat IP lokal",
     "description":"English: "
   },
-  "settingsExperimentalPrompt":{
-    "message":"Fungsikan fitur eksperimental (<a href='https:\/\/github.com\/gorhill\/uBlock\/wiki\/Experimental-features'>Tentang<\/a>)",
-    "description":"English: Enable experimental features"
+  "settingPerSiteSwitchGroup":{
+    "message":"Perilaku bawaan",
+    "description":""
+  },
+  "settingPerSiteSwitchGroupSynopsis":{
+    "message":"Perilaku bawaan ini bisa ditimpa pada masing-masing aturan situs",
+    "description":""
+  },
+  "settingsNoCosmeticFilteringPrompt":{
+    "message":"Nonfungsikan filter tampilan",
+    "description":""
+  },
+  "settingsNoLargeMediaPrompt":{
+    "message":"Blokir elemen media yang lebih besar dari {{input:number}} kB",
+    "description":""
+  },
+  "settingsNoRemoteFontsPrompt":{
+    "message":"Blokir fon rajuh",
+    "description":""
   },
   "settingsStorageUsed":{
     "message":"Penyimpanan terpakai: {{value}} bita",
@@ -205,23 +265,23 @@
   },
   "3pListsOfBlockedHostsPrompt":{
     "message":"{{netFilterCount}} filter jaringan + {{cosmeticFilterCount}} filter tampilan dari:",
-    "description":"English: {{netFilterCount}} network filters ＋ {{cosmeticFilterCount}} cosmetic filters from:"
+    "description":"Appears at the top of the _3rd-party filters_ pane"
   },
   "3pListsOfBlockedHostsPerListStats":{
     "message":"{{used}} digunakan dari {{total}}",
-    "description":"English: {{used}} used out of {{total}}"
+    "description":"Appears aside each filter list in the _3rd-party filters_ pane"
   },
   "3pAutoUpdatePrompt1":{
     "message":"Pembaruan otomatis daftar filter.",
-    "description":"English: Auto-update filter lists."
+    "description":"A checkbox in the _3rd-party filters_ pane"
   },
   "3pUpdateNow":{
     "message":"Perbarui sekarang",
-    "description":"English: Update now"
+    "description":"A button in the in the _3rd-party filters_ pane"
   },
   "3pPurgeAll":{
     "message":"Bersihkan semua tembolok",
-    "description":"English: Purge all caches"
+    "description":"A button in the in the _3rd-party filters_ pane"
   },
   "3pParseAllABPHideFiltersPrompt1":{
     "message":"Uraikan dan paksa jalankan filter tampilan.",
@@ -229,7 +289,15 @@
   },
   "3pParseAllABPHideFiltersInfo":{
     "message":"<p>Opsi ini memfungsikan penguraian dan memaksa-jalankan <a href=\"https:\/\/adblockplus.org\/en\/faq_internal#elemhide\">filter &ldquo;penyembunyian elemen&rdquo; yang kompatibel dengan Adblock Plus<\/a>. Filter ini pada dasarnya hanya sekedar penyaring tampilan, berfungsi untuk menyembunyikan elemen di halaman web yang dianggap sebagai gangguan visual, dan tidak dapat diblokir oleh filter berbasis permintaan jaringan.<\/p><p>Memfungsikan fitur ini akan meningkatkan penggunaan memori <i>uBlock₀<\/i>.<\/p>",
-    "description":"English: see English messages.json"
+    "description":"Describes the purpose of the 'Parse and enforce cosmetic filters' feature."
+  },
+  "3pIgnoreGenericCosmeticFilters":{
+    "message":"Abaikan filter tampilan generik",
+    "description":"This will cause uBO to ignore all generic cosmetic filters."
+  },
+  "3pIgnoreGenericCosmeticFiltersInfo":{
+    "message":"<p>Filter tampilan generik adalah filter tampilan yang dibuat untuk diterapkan pada semua situs web.<p>Meskipun dikelola secara efisien oleh uBlock₀, filter tampilan generik masih dapat menyebabkan peningkatan overhead memori ram dan CPU pada beberapa halaman web, terutama untuk halaman berukuran besar dan jarang diperbarui dalam waktu lama.<p>Mengaktifkan opsi ini akan menghilangkan peningkatan overhead memori ram dan CPU pada halaman web akibat diterapkannya filter tampilan generik, dan juga mengurangi penggunaan memori ram uBlock₀ itu sendiri.<p>Direkomendasikan untuk mengaktifkan opsi ini pada perangkat dengan ram kecil atau kekuatan CPU yang lemah.",
+    "description":"Describes the purpose of the 'Ignore generic cosmetic filters' feature."
   },
   "3pListsOfBlockedHostsHeader":{
     "message":"Daftar host yang diblokir",
@@ -271,25 +339,21 @@
     "message":"Satu URL per baris. Baris yang diawali dengan &lsquo;!&rsquo; akan diabaikan. URL yang tidak valid akan diabaikan tanpa peringatan.",
     "description":"English: One URL per line. Lines prefixed with &lsquo;!&rsquo; will be ignored. Invalid URLs will be silently ignored."
   },
-  "3pExternalListsApply":{
-    "message":"Uraikan",
-    "description":"English: Parse"
-  },
-  "3pExternalListPurge":{
-    "message":"bersihkan tembolok",
-    "description":"English: purge cache"
-  },
-  "3pExternalListNew":{
-    "message":"versi baru tersedia",
-    "description":"English: new version available"
-  },
   "3pExternalListObsolete":{
-    "message":"usang",
-    "description":"English: outdated"
+    "message":"Sudah usang.",
+    "description":"used as a tooltip for the out-of-date icon beside a list"
   },
   "3pLastUpdate":{
-    "message":"Pembaruan terakhir: {{ago}}",
-    "description":"English: Last update: {{ago}}, where 'ago' will be replaced with something like '2 days ago'"
+    "message":"Pembaruan terakhir: {{ago}}.\nKlik untuk memaksa memperbarui.",
+    "description":"used as a tooltip for the clock icon beside a list"
+  },
+  "3pUpdating":{
+    "message":"Memperbarui...",
+    "description":"used as a tooltip for the spinner icon beside a list"
+  },
+  "3pNetworkError":{
+    "message":"Galat jaringan mencegah sumber daya diperbarui.",
+    "description":"used as a tooltip for error icon beside a list"
   },
   "1pFormatHint":{
     "message":"Satu filter per baris. Filter dapat berupa nama host, atau filter yang kompatibel dengan Adblock Plus. Baris yang diawali dengan &lsquo;!&rsquo; akan diabaikan.",
@@ -360,8 +424,8 @@
     "description":"English: dynamic rule syntax and full documentation."
   },
   "whitelistPrompt":{
-    "message":"Daftar nama host yang mana uBlock₀ akan dinonfungsikan. Satu entri per baris. Nama host yang tidak valid akan diabaikan tanpa peringatan.",
-    "description":"English: Your list of host names for which uBlock₀ will be disabled. One host name per line. Invalid host names will be silently ignored."
+    "message":"Daftar putih domain atau halaman, uBlock Origin akan dinonaktifkan. Satu entri per baris. Entri yang tidak valid akan diabaikan dan dijadikan komentar.",
+    "description":"English: An overview of the content of the dashboard's Whitelist pane."
   },
   "whitelistImport":{
     "message":"Impor dan tambahkan",
@@ -475,6 +539,10 @@
     "message":"Wiki",
     "description":"English: project' wiki on Github"
   },
+  "aboutSupport":{
+    "message":"Dukungan",
+    "description":"A link for where to get support"
+  },
   "aboutCode":{
     "message":"Kode sumber (GPLv3)",
     "description":"English: Source code (GPLv3)"
@@ -485,7 +553,7 @@
   },
   "aboutBackupDataButton":{
     "message":"Cadangkan ke berkas",
-    "description":"English: Backup to file"
+    "description":"Text for button to create a backup of all settings"
   },
   "aboutBackupFilename":{
     "message":"my-ublock-backup_{{datetime}}.txt",
@@ -512,8 +580,8 @@
     "description":"Message asking user to confirm reset"
   },
   "errorCantConnectTo":{
-    "message":"Tidak dapat terhubung ke {{url}}",
-    "description":"English: Network error: unable to connect to {{url}}"
+    "message":"Galat jaringan: {{msg}}",
+    "description":"English: Network error: {{msg}}"
   },
   "subscriberConfirm":{
     "message":"uBlock₀: Tambahkan URL berikut ke daftar filter tersesuai anda?\n\nJudul: \"{{title}}\"\nURL: {{url}}",
@@ -563,6 +631,10 @@
     "message":"Disebabkan oleh filter berikut",
     "description":"English: Because of the following filter"
   },
+  "docblockedNoParamsPrompt":{
+    "message":"tanpa parameter",
+    "description":"label to be used for the parameter-less URL: https:\/\/cloud.githubusercontent.com\/assets\/585534\/9832014\/bfb1b8f0-593b-11e5-8a27-fba472a5529a.png"
+  },
   "docblockedFoundIn":{
     "message":"Ditemukan di:",
     "description":"English: List of filter list names follows"
@@ -586,6 +658,50 @@
   "docblockedDisablePermanent":{
     "message":"Permanen",
     "description":"English: Permanently"
+  },
+  "cloudPush":{
+    "message":"Ekspor ke penyimpanan awan",
+    "description":"tooltip"
+  },
+  "cloudPull":{
+    "message":"Impor dari penyimpanan awan",
+    "description":"tooltip"
+  },
+  "cloudPullAndMerge":{
+    "message":"Impor dari penyimpanan awan dan gabungkan dengan pengaturan saat ini",
+    "description":"tooltip"
+  },
+  "cloudNoData":{
+    "message":"...\n...",
+    "description":""
+  },
+  "cloudDeviceNamePrompt":{
+    "message":"Nama perangkat ini:",
+    "description":"used as a prompt for the user to provide a custom device name"
+  },
+  "advancedSettingsWarning":{
+    "message":"Peringatan! Ubah pengaturan lanjutan berikut dengan resiko Anda sendiri.",
+    "description":"A warning to users at the top of 'Advanced settings' page"
+  },
+  "genericSubmit":{
+    "message":"Kirim",
+    "description":"for generic 'Submit' buttons"
+  },
+  "genericApplyChanges":{
+    "message":"Terapkan perubahan",
+    "description":"for generic 'Apply changes' buttons"
+  },
+  "genericRevert":{
+    "message":"Urungkan",
+    "description":"for generic 'Revert' buttons"
+  },
+  "genericBytes":{
+    "message":"byte",
+    "description":""
+  },
+  "contextMenuTemporarilyAllowLargeMediaElements":{
+    "message":"Sementara izinkan elemen media besar",
+    "description":"A context menu entry, present when large media elements have been blocked on the current site"
   },
   "dummy":{
     "message":"Entri ini harus menjadi yang terakhir",

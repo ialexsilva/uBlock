@@ -1,7 +1,7 @@
 /*******************************************************************************
 
-    uBlock - a browser extension to block requests.
-    Copyright (C) 2015 Raymond Hill
+    uBlock Origin - a browser extension to block requests.
+    Copyright (C) 2015-2016 Raymond Hill
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,84 +19,24 @@
     Home: https://github.com/gorhill/uBlock
 */
 
-/* global vAPI, HTMLDocument */
-
-/******************************************************************************/
-
-(function() {
-
 'use strict';
 
 /******************************************************************************/
 
-// https://github.com/gorhill/uBlock/issues/464
-if ( document instanceof HTMLDocument === false ) {
-    //console.debug('cosmetic-off.js > not a HTLMDocument');
-    return;
-}
-
-// This can happen
-if ( typeof vAPI !== 'object' ) {
-    //console.debug('cosmetic-off.js > no vAPI');
-    return;
-}
-
-/******************************************************************************/
-
-var styles = vAPI.styles;
-
-if ( Array.isArray(styles) === false ) {
-    return;
-}
-
-var sessionId = vAPI.sessionId;
-
-/******************************************************************************/
-
-// Remove all cosmetic filtering-related styles from the DOM
-
-var selectors = [];
-var reProperties = /\s*\{[^}]+\}\s*/;
-var style, i;
-
-i = styles.length;
-while ( i-- ) {
-    style = styles[i];
-    selectors.push(style.textContent.replace(reProperties, ''));
-    if ( style.sheet !== null ) {
-        style.sheet.disabled = true;
+(function() {
+    if ( typeof vAPI !== 'object' || !vAPI.domFilterer ) {
+        return;
     }
-}
 
-if ( selectors.length === 0 ) {
-    return;
-}
-
-var elems = [];
-try {
-    elems = document.querySelectorAll(selectors.join(','));
-} catch (e) {
-}
-i = elems.length;
-
-var elem, shadow;
-while ( i-- ) {
-    elem = elems[i];
-    shadow = elem.shadowRoot;
-    if ( shadow === undefined ) {
-        style = elem.style;
-        if ( typeof style === 'object' || typeof style.removeProperty === 'function' ) {
-            style.removeProperty('display');
-        }
-        continue;
+    var elems = [];
+    try {
+        elems = document.querySelectorAll('[' + vAPI.domFilterer.hiddenId + ']');
+    } catch (e) {
     }
-    if ( shadow !== null && shadow.className === sessionId && shadow.firstElementChild === null ) {
-        shadow.appendChild(document.createElement('content'));
+    var i = elems.length;
+    while ( i-- ) {
+        vAPI.domFilterer.showNode(elems[i]);
     }
-}
 
-/******************************************************************************/
-
+    vAPI.domFilterer.toggleOff();
 })();
-
-/******************************************************************************/

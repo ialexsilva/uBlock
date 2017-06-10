@@ -1,7 +1,7 @@
 /*******************************************************************************
 
-    µBlock - a browser extension to block requests.
-    Copyright (C) 2014 Raymond Hill
+    uBlock Origin - a browser extension to block requests.
+    Copyright (C) 2014-2016 Raymond Hill
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,11 +21,11 @@
 
 /* global uDom */
 
+'use strict';
+
 /******************************************************************************/
 
 (function() {
-
-'use strict';
 
 /******************************************************************************/
 
@@ -37,44 +37,45 @@ var resizeFrame = function() {
 
 /******************************************************************************/
 
-var loadDashboardPanel = function(tab, q) {
-    var tabButton = uDom('[href="#' + tab + '"]');
-    if ( !tabButton ) {
+var loadDashboardPanel = function() {
+    var pane = window.location.hash.slice(1);
+    if ( pane === '' ) {
+        pane = vAPI.localStorage.getItem('dashboardLastVisitedPane') || 'settings.html';
+    } else {
+        vAPI.localStorage.setItem('dashboardLastVisitedPane', pane);
+    }
+    var tabButton = uDom('[href="#' + pane + '"]');
+    if ( !tabButton || tabButton.hasClass('selected') ) {
         return;
     }
-    q = q || '';
-    uDom('iframe').attr('src', tab + q);
-    uDom('.tabButton').toggleClass('selected', false);
+    uDom('.tabButton.selected').toggleClass('selected', false);
+    uDom('iframe').attr('src', pane);
     tabButton.toggleClass('selected', true);
 };
 
 /******************************************************************************/
 
 var onTabClickHandler = function(e) {
-    loadDashboardPanel(this.hash.slice(1));
+    var url = window.location.href,
+        pos = url.indexOf('#');
+    if ( pos !== -1 ) {
+        url = url.slice(0, pos);
+    }
+    url += this.hash;
+    if ( url !== window.location.href ) {
+        window.location.replace(url);
+        loadDashboardPanel();
+    }
     e.preventDefault();
 };
 
 /******************************************************************************/
 
 uDom.onLoad(function() {
-    window.addEventListener('resize', resizeFrame);
     resizeFrame();
-
-    var matches = window.location.search.slice(1).match(/\??(tab=([^&]+))?(.*)$/);
-    var tab = '', q = '';
-    if ( matches && matches.length === 4 ) {
-        tab = matches[2];
-        q = matches[3];
-        if ( q !== '' && q.charAt(0) === '&' ) {
-            q = '?' + q.slice(1);
-        }
-    }
-    if ( !tab ) {
-        tab = 'settings';
-    }
-    loadDashboardPanel(tab + '.html', q);
+    window.addEventListener('resize', resizeFrame);
     uDom('.tabButton').on('click', onTabClickHandler);
+    loadDashboardPanel();
 });
 
 /******************************************************************************/

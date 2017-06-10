@@ -1,7 +1,7 @@
 /*******************************************************************************
 
-    µBlock - a browser extension to block requests.
-    Copyright (C) 2014 Raymond Hill
+    uBlock Origin - a browser extension to block requests.
+    Copyright (C) 2014-2016 Raymond Hill
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,6 +22,8 @@
 /* global DOMTokenList */
 /* exported uDom */
 
+'use strict';
+
 /******************************************************************************/
 
 // It's just a silly, minimalist DOM framework: this allows me to not rely
@@ -31,8 +33,6 @@
 // of assumption on passed parameters, etc. I grow it on a per-need-basis only.
 
 var uDom = (function() {
-
-'use strict';
 
 /******************************************************************************/
 
@@ -173,7 +173,7 @@ var doesMatchSelector = function(node, selector) {
 /******************************************************************************/
 
 DOMList.prototype.nodeAt = function(i) {
-    return this.nodes[i];
+    return this.nodes[i] || null;
 };
 
 DOMList.prototype.at = function(i) {
@@ -336,7 +336,7 @@ DOMList.prototype.remove = function() {
     var i = this.nodes.length;
     while ( i-- ) {
         cn = this.nodes[i];
-        if ( p = cn.parentNode ) {
+        if ( (p = cn.parentNode) ) {
             p.removeChild(cn);
         }
      }
@@ -499,6 +499,16 @@ DOMList.prototype.attr = function(attr, value) {
 
 /******************************************************************************/
 
+DOMList.prototype.removeAttr = function(attr) {
+    var i = this.nodes.length;
+    while ( i-- ) {
+        this.nodes[i].removeAttribute(attr);
+    }
+    return this;
+};
+
+/******************************************************************************/
+
 DOMList.prototype.prop = function(prop, value) {
     var i = this.nodes.length;
     if ( value === undefined ) {
@@ -517,8 +527,14 @@ DOMList.prototype.css = function(prop, value) {
     if ( value === undefined ) {
         return i ? this.nodes[0].style[prop] : undefined;
     }
+    if ( value !== '' ) {
+        while ( i-- ) {
+            this.nodes[i].style.setProperty(prop, value);
+        }
+        return this;
+    }
     while ( i-- ) {
-        this.nodes[i].style[prop] = value;
+        this.nodes[i].style.removeProperty(prop);
     }
     return this;
 };
@@ -527,19 +543,6 @@ DOMList.prototype.css = function(prop, value) {
 
 DOMList.prototype.val = function(value) {
     return this.prop('value', value);
-};
-
-/******************************************************************************/
-
-DOMList.prototype.html = function(html) {
-    var i = this.nodes.length;
-    if ( html === undefined ) {
-        return i ? this.nodes[0].innerHTML : '';
-    }
-    while ( i-- ) {
-        vAPI.insertHTML(this.nodes[i], html);
-    }
-    return this;
 };
 
 /******************************************************************************/
@@ -707,7 +710,7 @@ DOMList.prototype.trigger = function(etype) {
 
 var onBeforeUnload = function() {
     var entry;
-    while ( entry = listenerEntries.pop() ) {
+    while ( (entry = listenerEntries.pop()) ) {
         entry.dispose();
     }
     window.removeEventListener('beforeunload', onBeforeUnload);
