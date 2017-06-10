@@ -3,6 +3,17 @@
 [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/gorhill/uBlock/blob/master/LICENSE.txt)
 
 ***
+
+##### BEWARE! uBlock Origin is COMPLETELY UNRELATED to the web site ublock.org**
+
+The donations sought by the [individual](https://github.com/chrisaljoudi/) behind `ublock.org` (_"to keeps uBlock development possible"_, [a misrepresentation](https://en.wikipedia.org/wiki/UBlock_Origin#uBlock_.28ublock.org.29)) are _not_ benefiting any of those who contributed most to create uBlock Origin ([developers](https://github.com/gorhill/uBlock/graphs/contributors), [translators](https://crowdin.com/project/ublock), and all those who put efforts in opening detailed issues). For the differences between uBlock Origin and uBlock, see the unbiased [Wikipedia article](https://en.wikipedia.org/wiki/UBlock_Origin).
+
+***
+
+uBlock Origin is **NOT** an "ad blocker": [it is a wide-spectrum blocker](https://github.com/gorhill/uBlock/wiki/Blocking-mode) -- which happens to be able to function as a mere "ad blocker". The default behavior of uBlock Origin when newly installed is to block ads, trackers and malware sites -- through [_EasyList_](https://easylist.github.io/#easylist), [_EasyPrivacy_](https://easylist.github.io/#easyprivacy), [_Peter Lowe’s ad/tracking/malware servers_](https://pgl.yoyo.org/adservers/policy.php), various lists of [malware](http://www.malwaredomainlist.com/) [sites](http://www.malwaredomains.com/), and uBlock Origin's [own filter lists](https://github.com/uBlockOrigin/uAssets/tree/master/filters).
+
+*** 
+
 <h1 align="center">
 <sub>
 <img  src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/img/icon38@2x.png"
@@ -13,65 +24,66 @@ uBlock Origin
 </h1>
 <p align="center">
 <sup> <!-- Pronounciation -->
-      pronunciado <i>you-block origin</i> (<code>/ˈjuːˌblɒk/</code>) — <i>you</i>(você) decide o que executa no seu navegador.
+      pronounced <i>you-block origin</i> (<code>/ˈjuːˌblɒk/</code>) — <i>you</i> decide what enters your browser.
 </sup>
 <br>
 <sup> <!-- Languages -->
       <img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/img/languageicon-36.png" width="18" height="18">
       <sup>
-            <a href="https://github.com/gorhill/uBlock/blob/master/README.md#ublock-origin">
-            English,          <a href="https://github.com/fang5566/uBlock/blob/master/README.md#ublock-origin">
-            Chinese (中文),   </a><a href="https://github.com/delightbot/uBlock/blob/master/README.md#ublock-origin">
-            Korean (한국어),<a/>
-            Português (Brasil)
+            English,
+            <a href="https://github.com/fang5566/uBlock/blob/master/README.md#ublock-origin">Chinese (中文)</a>,
+            <a href="https://github.com/delightbot/uBlock/blob/master/README.md#ublock-origin">Korean (한국어)</a>,
+            <a href="https://github.com/ialexsilva/uBlock/blob/master/README.md#ublock-origin">Português (Brasil)</a>
       </sup>
 </sup>
 </p>
 
 
-**Um bloqueador eficiente para varios navegadores. Rápido e leve.**
+**An efficient blocker add-on for various browsers. Fast, potent, and lean.**
 
-* [Documentação](#documentação)
-* [Finalidade & Informações Gerais](#finalidade)
-* [Desempenho e Eficiência](#desempenho)
-  * [Memória](#memória)
+* [Documentation](#documentation)
+* [Purpose & General Info](#philosophy)
+* [Performance and Efficiency](#performance)
+  * [Memory](#memory)
   * [CPU](#cpu)
-  * [Bloqueio](#bloqueio)
-  * [Outros Testes](#outros-testes)
-* [Instalação](#instalação)
+  * [Blocking](#blocking)
+  * [Quick tests](#quick-tests)
+* [Installation](#installation)
   * [Chromium](#chromium)
-  * [Firefox](#firefox--firefox-para-android)
+  * [Firefox](#firefox--firefox-for-android)
   * [Microsoft Edge](#microsoft-edge)
   - [Safari (macOS)](#safari-macos)
-* [Histórico de Lançamentos](#histórico-de-lançamentos)
-* [Política de Privacidade](https://github.com/gorhill/uBlock/wiki/Privacy-policy)
+* [Release History](#release-history)
+* [Privacy policy](https://github.com/gorhill/uBlock/wiki/Privacy-policy)
 * [Wiki](https://github.com/gorhill/uBlock/wiki)
 
-## Documentação
+## Documentation
 
- Modo básico | Modo usuário avançado
+ Basic mode | Advanced-user mode
 :----------:|:------------------:
-[Interface de usuário](https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface) | [Tem um firewall de apontar e clicar que pode ser configurado site por site](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide) 
-<a href="https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface"><img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/img/popup-1.png" /></a><br><sup>.<br>.</sup> | <a href="https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide"><img src="https://cloud.githubusercontent.com/assets/585534/9293685/378d18f0-4402-11e5-9255-8ed3fdbfa957.png" /></a><br><sup>Configure como quiser:<br>a imagem mostra scripts de terceiros e frames bloqueados por padrão</sup>
+[Popup user interface](https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface) | [A point-and-click firewall which can be configured on a per-site basis](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide) 
+<a href="https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface"><img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/img/popup-1.png" /></a><br><sup>.<br>.</sup> | <a href="https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide"><img src="https://cloud.githubusercontent.com/assets/585534/9293685/378d18f0-4402-11e5-9255-8ed3fdbfa957.png" /></a><br><sup>Configure as you wish:<br>picture shows 3rd-party scripts and frames blocked by default everywhere</sup>
 
-## Finalidade
+Visit the [uBlock Origin's wiki](https://github.com/gorhill/uBlock/wiki) for documentation.
 
-uBlock Origin (ou uBlock₀) não é somente um *bloqueador de anúncios*; é um bloqueador de uso geral. O uBlock₀ bloqueia anúncios através do suporte da [sintaxe de filtro do Adblock Plus](https://adblockplus.org/en/filters). uBlock₀ [estende](https://github.com/gorhill/uBlock/wiki/Filter-syntax-extensions) a sintaxe que é projetada para funcionar com regras e filtros personalizados. Além disso, o modo usuário avançado permite uBlock₀ funcionar em [modo bloquear-padrão](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-default-deny), modo que irá fazer [todos pedidos de rede de terceiros](https://requestpolicycontinued.github.io/#what-are-cross-site-requests) serem bloqueados por padrão, a menos que seja permitido pelo usuário.
+## Philosophy
 
-Dito isto, é importante notar que o uso de um bloqueador **NÃO** é [roubar](https://twitter.com/LeaVerou/status/518154828166725632). Não caia nessa idéia. A consequência lógica _final_ de que `bloquear = roubar` é a criminalização do direito inalienável a privacidade.
+uBlock Origin (or uBlock₀) is not an *ad blocker*; it's a general-purpose blocker. uBlock₀ blocks ads through its support of the [Adblock Plus filter syntax](https://adblockplus.org/en/filters). uBlock₀ [extends](https://github.com/gorhill/uBlock/wiki/Filter-syntax-extensions) the syntax and is designed to work with custom rules and filters. Furthermore, advanced mode allows uBlock₀ to work in [default-deny mode](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-default-deny), which mode will cause [all 3rd-party network requests](https://requestpolicycontinued.github.io/#what-are-cross-site-requests) to be blocked by default, unless allowed by the user.
 
-Anúncios, "invasivos" ou não, são apenas as partes visíveis dos mecanismos de invasão a privacidade entrando no seu navegador quando você visita a maioria dos sites hoje em dia. **O principal objetivo do uBlock₀'s é ajudar os usuários a neutralizar tais mecanismos de invasão a privacidade** — de uma forma que acolhe aqueles usuários que não queiram o uso mais avançado envolvido (como [µMatrix](https://github.com/gorhill/uMatrix)).
+That said, it's important to note that using a blocker is **NOT** [theft](https://twitter.com/LeaVerou/status/518154828166725632). Don't fall for this creepy idea. The _ultimate_ logical consequence of `blocking = theft` is the criminalisation of the inalienable right to privacy.
 
-_EasyList_, _Peter Lowe's Adservers_, _EasyPrivacy_ e _Malware domains_ são ativadas por padrão quando você instala o uBlock₀. Muitas outras listas estão disponíveis para bloquear rastreadores, analytics e muito mais. Arquivos hosts também são suportados.
+Ads, "unintrusive" or not, are just the visible portions of privacy-invading apparatus entering your browser when you visit most sites nowadays. **uBlock₀'s main goal is to help users neutralize such privacy-invading apparatus** — in a way that welcomes those users who don't wish to use more technical, involved means (such as [µMatrix](https://github.com/gorhill/uMatrix)).
 
-Depois de instalar o uBlock₀, você pode facilmente desmarcar qualquer uma das listas pre-selecionada, se você pensa que o uBlock₀ bloqueando muito. Para referência, o Adblock Plus instala somente a lista _EasyList_ por padrão.
+_EasyList_, _Peter Lowe's Adservers_, _EasyPrivacy_ and _Malware domains_ are enabled by default when you install uBlock₀. Many more lists are readily available to block trackers, analytics, and more. Hosts files are also supported.
 
-## Desempenho
+Once you install uBlock₀, you may easily un-select any of the pre-selected filter lists if you think uBlock₀ blocks too much. For reference, Adblock Plus installs with only _EasyList_ enabled by default.
 
-#### Memória
+## Performance
+
+#### Memory
 
 <div align="center">
-Em média, uBlock Origin faz com que seu navegador fique mais leve <sup>[1]</sup><br><br>
+On average, uBlock Origin does make your browser run leaner. <sup>[1]</sup><br><br>
 
 Chromium<br>
 <img src="https://cloud.githubusercontent.com/assets/585534/10074141/15f04128-629c-11e5-9155-177fd4909083.png" /><br><br>
@@ -81,90 +93,85 @@ Firefox<br>
 
 </div>
 
-<sup>[1] Detalhes do benchmark disponível na <a href="https://github.com/gorhill/uBlock/wiki/Firefox-version:-benchmarking-memory-footprint">versão do Firefox: benchmarking consumo de memória</a>.</sup><br>
+<sup>[1] Details of the benchmark available at <a href="https://github.com/gorhill/uBlock/wiki/Firefox-version:-benchmarking-memory-footprint">Firefox version: benchmarking memory footprint</a>.</sup><br>
 
 #### CPU
 
 <p align="center">
-uBlock₀ também usa poucos recursos de CPU<br>
+uBlock Origin is also easy on the CPU<br>
 <img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/benchmarks/cpu-usage-overall-chart-20141226.png" /><br>
-<sup>Detalhes do benchmark disponível <a href="https://github.com/gorhill/uBlock/blob/master/doc/benchmarks/cpu-usage-overall-20141226.ods">nesta planilha do LibreOffice</a>.</sup>
+<sup>Details of the benchmark available in <a href="https://github.com/gorhill/uBlock/blob/master/doc/benchmarks/cpu-usage-overall-20141226.ods">this LibreOffice spreadsheet</a>.</sup>
 </p>
 
-#### Bloqueio
+#### Blocking
 
 <p align="center">
-Ser leve e eficiente não significa que está bloqueando menos<br>
+Being lean and efficient doesn't mean blocking less<br>
 <img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/benchmarks/privex-201502-16.png" /><br>
-<sup>Para detalhes do benchmark, veja 
-<a href="https://github.com/gorhill/uBlock/wiki/uBlock-and-others%3A-Blocking-ads%2C-trackers%2C-malwares">uBlock₀ e outros: Bloqueadores de anúncios, rastreadores, malwares</a>.
+<sup>For details of benchmark, see 
+<a href="https://github.com/gorhill/uBlock/wiki/uBlock-and-others%3A-Blocking-ads%2C-trackers%2C-malwares">uBlock₀ and others: Blocking ads, trackers, malwares</a>.
 </p>
 
-#### Outros Testes
+## Installation
 
-- [Index](http://raymondhill.net/ublock/tests.html)
-- [Componentes da página web](http://raymondhill.net/ublock/tiles1.html)
-- [Popups](http://raymondhill.net/ublock/popup.html)
-- [Páginas de teste ABP](https://testpages.adblockplus.org/)
-
-## Instalação
-
-Sinta-se livre para ler [sobre as permissões necessárias da extensão](https://github.com/gorhill/uBlock/wiki/About-the-required-permissions).
+Feel free to read [about the extension's required permissions](https://github.com/gorhill/uBlock/wiki/About-the-required-permissions).
 
 #### Chromium
 
-Você pode instalar a ultima versão [manualmente](https://github.com/gorhill/uBlock/tree/master/dist#install), da [Chrome Store](https://chrome.google.com/webstore/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm), ou da [Opera store](https://addons.opera.com/en-gb/extensions/details/ublock/).
+You can install the latest version [manually](https://github.com/gorhill/uBlock/tree/master/dist#install), from the [Chrome Store](https://chrome.google.com/webstore/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm), or from the [Opera store](https://addons.opera.com/extensions/details/ublock/).
 
-Espera-se que uBlock Origin seja compatível com todos os navegadores baseados no Chromium.
+It is expected that uBlock Origin is compatible with any Chromium-based browsers.
 
-**Importante:** Navegadores baseados no Chromium não retransmite [conexões websocket](https://en.wikipedia.org/wiki/WebSocket) Isso pode ser corrigido através da instalação da extensão companheira do uBO. [uBO-WebSocket](https://github.com/gorhill/uBO-WebSocket).
+**Important:** Chromium-based browsers do not relay [websocket connections](https://en.wikipedia.org/wiki/WebSocket) to the extension API. This means websites can use websocket connections to bypass uBO (or any other blocker). This can be remediated by installing uBO's companion extension [uBO-Extra](https://github.com/gorhill/uBO-Extra).
 
-#### Firefox / Firefox para Android
+#### Firefox / Firefox for Android
 
-[Site de Complementos do Firefox](https://addons.mozilla.org/addon/ublock-origin/). Há também uma versão de desenvolvimento, se você quiser testar uBlock Origin com as últimas alterações: visite a página de [_Histórico de versões do uBlock Origin_](https://addons.mozilla.org/addon/ublock-origin/versions/beta)
+[Firefox Add-ons web site](https://addons.mozilla.org/addon/ublock-origin/). There is also a development version if you want to test uBlock Origin with the latest changes: see [_uBlock Origin Version History_](https://addons.mozilla.org/addon/ublock-origin/versions/beta)
 
-uBlock Origin é compatível com [SeaMonkey](http://www.seamonkey-project.org/), [Pale Moon](https://www.palemoon.org/), e possivelmente outros navegadores baseados no Firefox.
+uBlock Origin is compatible with [SeaMonkey](http://www.seamonkey-project.org/), [Pale Moon](https://www.palemoon.org/), and possibly other browsers based on Firefox.
 
-A versão do uBlock Origin para o Firefox tem [uma funcionalidade extra](https://github.com/gorhill/uBlock/wiki/Inline-script-tag-filtering) atualmente ainda não está disponível para os navegadores baseados no Chromium -- que apresenta uma grande ajuda para frustrar as tentativas de muitos sites de contornar os bloqueadores.
+The Firefox version of uBlock Origin has [an extra feature](https://github.com/gorhill/uBlock/wiki/Inline-script-tag-filtering) currently not yet available on Chromium-based browsers -- which feature is of great help to foil attempts by many web sites to circumvent blockers.
 
-Também de interesse: [Implantando o uBlock Origin para o Firefox com CCK2 e diretiva de grupo.](http://decentsecurity.com/ublock-for-firefox-deployment/).
+Also of interest: [Deploying uBlock Origin for Firefox with CCK2 and Group Policy](http://decentsecurity.com/ublock-for-firefox-deployment/).
 
-##### Debian/Ubuntu
-
-Agradecimentos ao colaborador do Debian [Sean Whitton](https://wiki.debian.org/SeanWhitton), os usuários do Debian 9 ou posterior ou Ubuntu 16.04 ou posterior pode simplesmente instalar usando
+Thanks to Debian contributor [Sean Whitton](https://wiki.debian.org/SeanWhitton), users of Debian 9 or later or Ubuntu 16.04 or later may simply
 `apt-get install xul-ext-ublock-origin`.
 
 #### Microsoft Edge
 
-Versão em desenvolvimento por [@nikrolls](https://github.com/nikrolls): <https://github.com/nikrolls/uBlock-Edge#edge>.
+Developer: [@nikrolls](https://github.com/nikrolls).
+
+Stable version available in [Microsoft Store](https://www.microsoft.com/store/p/app/9nblggh444l4).
+
+Development version available at <https://github.com/nikrolls/uBlock-Edge#edge>.
 
 #### Safari (macOS)
 
-Desenvolvedor: [@el1t](https://github.com/el1t).
+Developer: [@el1t](https://github.com/el1t).
 
-Versão de desenvolvimento disponível em <https://github.com/el1t/uBlock-Safari#ublock-originfor-safari>.
+Development version available at <https://github.com/el1t/uBlock-Safari#ublock-originfor-safari>.
 
-#### Nota para os usuários de todos navegadores
+#### Note for all browsers
 
-Para beneficiar da eficiência mais elevada do uBlock Origin's, é aconselhavel que você não use outros bloqueadores ao mesmo tempo (como o AdBlock ou Adblock Plus). uBlock₀ vai funcionar [tão bem ou melhor](#blocking) do que a maioria dos bloqueadores de anúncios populares.
+To benefit from uBlock Origin's higher efficiency, it's advised that you don't use other inefficient blockers at the same time (such as AdBlock or Adblock Plus). uBlock₀ will do [as well or better](#blocking) than most popular ad blockers.
 
-## Histórico de Lançamentos
+## Release History
 
-Visite a [página de lançamentos](https://github.com/gorhill/uBlock/releases) para ver o registro de alterações e os destaques de cada lançamento.
+See the [releases pages](https://github.com/gorhill/uBlock/releases) for a history of releases and highlights for each release.
 
-## Sobre
+## About
 
-[Manifesto do uBlock Origin's](MANIFESTO.md).
+[uBlock Origin's manifesto](MANIFESTO.md).
 
-Gratuito e de código aberto. Feito de usuários para usuários. Não aceitamos doações.
+Free. Open source. For users by users. No donations sought.
 
-Sem as listas predefinidas de filtros, esta extensão não é nada. 
-Por isso, se você nunca contribuiu com alguma coisa, pense nas pessoas que trabalham duro
-para manter as listas de filtro que você está usando, que foram disponibilizadas para usar
-tudo de graça.
+Without the preset lists of filters, this extension is nothing. So if ever you
+really do want to contribute something, think about the people working hard
+to maintain the filter lists you are using, which were made available to use by
+all for free.
 
-Você pode contribuir ajudando a traduzir uBlock₀ [no Crowdin](https://crowdin.net/project/ublock).
+You can contribute by helping translate uBlock₀ [on Crowdin](https://crowdin.net/project/ublock).
 
-## Licença
+## License
 
 [GPLv3](https://github.com/gorhill/uBlock/blob/master/LICENSE.txt).
