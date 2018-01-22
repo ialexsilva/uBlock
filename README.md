@@ -144,7 +144,7 @@ Desenvolvedor: [@el1t](https://github.com/el1t).
 
 Versão de desenvolvimento disponível em <https://github.com/el1t/uBlock-Safari#ublock-originfor-safari>.
 
-#### Nota para os usuários de todos navegadores
+#### Nota para usuários de todos navegadores
 
 Para beneficiar da eficiência mais elevada do uBlock Origin's, é aconselhavel que você não use outros bloqueadores ao mesmo tempo (como o AdBlock ou Adblock Plus). uBlock₀ vai funcionar [tão bem ou melhor](#blocking) do que a maioria dos bloqueadores de anúncios populares.
 
