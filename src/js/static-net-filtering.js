@@ -20,7 +20,7 @@
 */
 
 /* jshint bitwise: false */
-/* global punycode */
+/* global punycode, HNTrieBuilder */
 
 'use strict';
 
@@ -58,6 +58,7 @@ var typeNameToTypeValue = {
         'stylesheet':  1 << 4,
              'image':  2 << 4,
             'object':  3 << 4,
+ 'object_subrequest':  3 << 4,
             'script':  4 << 4,
     'xmlhttprequest':  5 << 4,
          'sub_frame':  6 << 4,
@@ -69,10 +70,12 @@ var typeNameToTypeValue = {
           'popunder': 12 << 4,
         'main_frame': 13 << 4,  // start of 1st-party-only behavorial filtering
        'generichide': 14 << 4,
-     'inline-script': 15 << 4,
-              'data': 16 << 4,  // special: a generic data holder
-          'redirect': 17 << 4,
-            'webrtc': 18 << 4
+       'inline-font': 15 << 4,
+     'inline-script': 16 << 4,
+              'data': 17 << 4,  // special: a generic data holder
+          'redirect': 18 << 4,
+            'webrtc': 19 << 4,
+       'unsupported': 20 << 4
 };
 var otherTypeBitValue = typeNameToTypeValue.other;
 
@@ -91,17 +94,13 @@ var typeValueToTypeName = {
     12: 'popunder',
     13: 'document',
     14: 'generichide',
-    15: 'inline-script',
-    16: 'data',
-    17: 'redirect',
-    18: 'webrtc'
+    15: 'inline-font',
+    16: 'inline-script',
+    17: 'data',
+    18: 'redirect',
+    19: 'webrtc',
+    20: 'unsupported'
 };
-
-// All network request types to bitmap
-//   bring origin to 0 (from 4 -- see typeNameToTypeValue)
-//   left-shift 1 by the above-calculated value
-//   subtract 1 to set all type bits
-var allNetRequestTypesBitmap = (1 << (otherTypeBitValue >>> 4)) - 1;
 
 var BlockAnyTypeAnyParty = BlockAction | AnyType | AnyParty;
 var BlockAnyType = BlockAction | AnyType;
@@ -200,7 +199,11 @@ var rawToRegexStr = function(s, anchor) {
                  .replace(me.escape3, '')
                  .replace(me.escape4, '[^ ]*?');
     if ( anchor & 0x4 ) {
-        reStr = '[0-9a-z.-]*?' + reStr;
+        reStr = (
+                    reStr.startsWith('\\.') ?
+                        rawToRegexStr.reTextHostnameAnchor2 :
+                        rawToRegexStr.reTextHostnameAnchor1
+                ) + reStr;
     } else if ( anchor & 0x2 ) {
         reStr = '^' + reStr;
     }
@@ -213,6 +216,8 @@ rawToRegexStr.escape1 = /[.+?${}()|[\]\\]/g;
 rawToRegexStr.escape2 = /\^/g;
 rawToRegexStr.escape3 = /^\*|\*$/g;
 rawToRegexStr.escape4 = /\*/g;
+rawToRegexStr.reTextHostnameAnchor1 = '^[a-z-]+://(?:[^/?#]+\\.)?';
+rawToRegexStr.reTextHostnameAnchor2 = '^[a-z-]+://(?:[^/?#]+)?';
 
 var filterFingerprinter = µb.CompiledLineWriter.fingerprint;
 
@@ -232,9 +237,9 @@ var toLogDataInternal = function(categoryBits, tokenHash, filter) {
     } else if ( categoryBits & 0x004 ) {
         opts.push('first-party');
     }
-    var type = (categoryBits >>> 4) & 0x1F;
-    if ( type !== 0 && type !== 16 /* data */ ) {
-        opts.push(typeValueToTypeName[type]);
+    var type = categoryBits & 0x1F0;
+    if ( type !== 0 && type !== typeNameToTypeValue.data ) {
+        opts.push(typeValueToTypeName[type >>> 4]);
     }
     if ( logData.opts !== undefined ) {
         opts.push(logData.opts);
@@ -449,7 +454,7 @@ FilterPlainHostname.prototype.match = function() {
 FilterPlainHostname.prototype.logData = function() {
     return {
         raw: '||' + this.s + '^',
-        regex: rawToRegexStr(this.s, 0x4),
+        regex: rawToRegexStr(this.s + '^'),
         compiled: this.compile()
     };
 };
@@ -531,6 +536,38 @@ FilterPlainRightAnchored.load = function(args) {
 };
 
 registerFilterClass(FilterPlainRightAnchored);
+
+/******************************************************************************/
+
+var FilterExactMatch = function(s) {
+    this.s = s;
+};
+
+FilterExactMatch.prototype.match = function(url) {
+    return url === this.s;
+};
+
+FilterExactMatch.prototype.logData = function() {
+    return {
+        raw: '|' + this.s + '|',
+        regex: rawToRegexStr(this.s, 0x3),
+        compiled: this.compile()
+    };
+};
+
+FilterExactMatch.prototype.compile = function() {
+    return [ this.fid, this.s ];
+};
+
+FilterExactMatch.compile = function(details) {
+    return [ FilterExactMatch.fid, details.f ];
+};
+
+FilterExactMatch.load = function(args) {
+    return new FilterExactMatch(args[1]);
+};
+
+registerFilterClass(FilterExactMatch);
 
 /******************************************************************************/
 
@@ -623,14 +660,13 @@ FilterGenericHnAnchored.prototype.match = function(url) {
     if ( this.re === null ) {
         this.re = new RegExp(rawToRegexStr(this.s, this.anchor));
     }
-    var matchStart = url.search(this.re);
-    return matchStart !== -1 && isHnAnchored(url, matchStart);
+    return this.re.test(url);
 };
 
 FilterGenericHnAnchored.prototype.logData = function() {
     var out = {
         raw: '||' + this.s,
-        regex: this.re.source,
+        regex: rawToRegexStr(this.s, this.anchor & ~0x4),
         compiled: this.compile()
     };
     return out;
@@ -693,23 +729,30 @@ registerFilterClass(FilterGenericHnAndRightAnchored);
 /******************************************************************************/
 
 var FilterRegex = function(s) {
-    this.re = new RegExp(s, 'i');
+    this.re = s;
 };
 
 FilterRegex.prototype.match = function(url) {
+    if ( typeof this.re === 'string' ) {
+        this.re = new RegExp(this.re, 'i');
+    }
     return this.re.test(url);
 };
 
 FilterRegex.prototype.logData = function() {
+    var s = typeof this.re === 'string' ? this.re : this.re.source;
     return {
-        raw: '/' + this.re.source + '/',
-        regex: this.re.source,
+        raw: '/' + s + '/',
+        regex: s,
         compiled: this.compile()
     };
 };
 
 FilterRegex.prototype.compile = function() {
-    return [ this.fid, this.re.source ];
+    return [
+        this.fid,
+        typeof this.re === 'string' ? this.re : this.re.source
+    ];
 };
 
 FilterRegex.compile = function(details) {
@@ -844,9 +887,9 @@ FilterOriginHitSet.prototype = Object.create(FilterOrigin.prototype, {
     matchOrigin: {
         value: function() {
             if ( this.oneOf === null ) {
-                this.oneOf = new RegExp('(?:^|\\.)(?:' + this.domainOpt.replace(/\./g, '\\.') + ')$');
+                this.oneOf = HNTrieBuilder.fromDomainOpt(this.domainOpt);
             }
-            return this.oneOf.test(pageHostnameRegister);
+            return this.oneOf.matches(pageHostnameRegister);
         }
     },
 });
@@ -876,9 +919,9 @@ FilterOriginMissSet.prototype = Object.create(FilterOrigin.prototype, {
     matchOrigin: {
         value: function() {
             if ( this.noneOf === null ) {
-                this.noneOf = new RegExp('(?:^|\\.)(?:' + this.domainOpt.replace(/~/g, '').replace(/\./g, '\\.') + ')$');
+                this.noneOf = HNTrieBuilder.fromDomainOpt(this.domainOpt.replace(/~/g, ''));
             }
-            return this.noneOf.test(pageHostnameRegister) === false;
+            return this.noneOf.matches(pageHostnameRegister) === false;
         }
     },
 });
@@ -911,15 +954,15 @@ FilterOriginMixedSet.prototype = Object.create(FilterOrigin.prototype, {
                 i = hostnames.length,
                 hostname;
             while ( i-- ) {
-                hostname = hostnames[i].replace(/\./g, '\\.');
+                hostname = hostnames[i];
                 if ( hostname.charCodeAt(0) === 0x7E /* '~' */ ) {
                     noneOf.push(hostname.slice(1));
                 } else {
                     oneOf.push(hostname);
                 }
             }
-            this.oneOf = new RegExp('(?:^|\\.)(?:' + oneOf.join('|') + ')$');
-            this.noneOf = new RegExp('(?:^|\\.)(?:' + noneOf.join('|') + ')$');
+            this.oneOf = HNTrieBuilder.fromIterable(oneOf);
+            this.noneOf = HNTrieBuilder.fromIterable(noneOf);
         }
     },
     toDomainOpt: {
@@ -931,7 +974,8 @@ FilterOriginMixedSet.prototype = Object.create(FilterOrigin.prototype, {
         value: function() {
             if ( this.oneOf === null ) { this.init(); }
             var needle = pageHostnameRegister;
-            return this.oneOf.test(needle) && this.noneOf.test(needle) === false;
+            return this.oneOf.matches(needle) &&
+                   this.noneOf.matches(needle) === false;
         }
     },
 });
@@ -1095,12 +1139,12 @@ FilterHostnameDict.prototype.logData = function() {
 };
 
 FilterHostnameDict.prototype.compile = function() {
-    return [ this.fid, µb.setToArray(this.dict) ];
+    return [ this.fid, µb.arrayFrom(this.dict) ];
 };
 
 FilterHostnameDict.load = function(args) {
     var f = new FilterHostnameDict();
-    f.dict = µb.setFromArray(args[1]);
+    f.dict = new Set(args[1]);
     return f;
 };
 
@@ -1318,6 +1362,12 @@ var FilterParser = function() {
     this.reBadCSP = /(?:^|;)\s*report-(?:to|uri)\b/;
     this.domainOpt = '';
     this.noTokenHash = µb.urlTokenizer.tokenHashFromString('*');
+    this.unsupportedTypeBit = this.bitFromType('unsupported');
+    // All network request types to bitmap
+    //   bring origin to 0 (from 4 -- see typeNameToTypeValue)
+    //   left-shift 1 by the above-calculated value
+    //   subtract 1 to set all type bits
+    this.allNetRequestTypeBits = (1 << (otherTypeBitValue >>> 4)) - 1;
     this.reset();
 };
 
@@ -1332,13 +1382,15 @@ FilterParser.prototype.toNormalizedType = {
           'document': 'main_frame',
           'elemhide': 'generichide',
               'font': 'font',
+      'genericblock': 'unsupported',
        'generichide': 'generichide',
              'image': 'image',
+       'inline-font': 'inline-font',
      'inline-script': 'inline-script',
              'media': 'media',
             'object': 'object',
-             'other': 'other',
  'object-subrequest': 'object',
+             'other': 'other',
               'ping': 'other',
           'popunder': 'popunder',
              'popup': 'popup',
@@ -1346,7 +1398,7 @@ FilterParser.prototype.toNormalizedType = {
         'stylesheet': 'stylesheet',
        'subdocument': 'sub_frame',
     'xmlhttprequest': 'xmlhttprequest',
-            'webrtc': 'webrtc',
+            'webrtc': 'unsupported',
          'websocket': 'websocket'
 };
 
@@ -1398,16 +1450,16 @@ FilterParser.prototype.parseTypeOption = function(raw, not) {
     }
 
     // Non-discrete network types can't be negated.
-    if ( (typeBit & allNetRequestTypesBitmap) === 0 ) {
+    if ( (typeBit & this.allNetRequestTypeBits) === 0 ) {
         return;
     }
 
     // Negated type: set all valid network request type bits to 1
     if (
-        (typeBit & allNetRequestTypesBitmap) !== 0 &&
-        (this.types & allNetRequestTypesBitmap) === 0
+        (typeBit & this.allNetRequestTypeBits) !== 0 &&
+        (this.types & this.allNetRequestTypeBits) === 0
     ) {
-        this.types |= allNetRequestTypesBitmap;
+        this.types |= this.allNetRequestTypeBits;
     }
     this.types &= ~typeBit;
 };
@@ -1673,12 +1725,22 @@ FilterParser.prototype.parse = function(raw) {
         pos = s.lastIndexOf('$');
         if ( pos !== -1 ) {
             // https://github.com/gorhill/uBlock/issues/952
-            // Discard Adguard-specific `$$` filters.
+            //   Discard Adguard-specific `$$` filters.
             if ( s.indexOf('$$') !== -1 ) {
                 this.unsupported = true;
                 return this;
             }
             this.parseOptions(s.slice(pos + 1));
+            // https://github.com/gorhill/uBlock/issues/2283
+            //   Abort if type is only for unsupported types, otherwise
+            //   toggle off `unsupported` bit.
+            if ( this.types & this.unsupportedTypeBit ) {
+                this.types &= ~this.unsupportedTypeBit;
+                if ( this.types === 0 ) {
+                    this.unsupported = true;
+                    return this;
+                }
+            }
             s = s.slice(0, pos);
         }
     }
@@ -1749,12 +1811,18 @@ FilterParser.prototype.parse = function(raw) {
 
     // https://github.com/gorhill/uBlock/issues/1669#issuecomment-224822448
     // remove pointless leading *.
+    // https://github.com/gorhill/uBlock/issues/3034
+    // - We can remove anchoring if we need to match all at the start.
     if ( s.startsWith('*') ) {
         s = s.replace(/^\*+([^%0-9a-z])/, '$1');
+        this.anchor &= ~0x6;
     }
     // remove pointless trailing *
+    // https://github.com/gorhill/uBlock/issues/3034
+    // - We can remove anchoring if we need to match all at the end.
     if ( s.endsWith('*') ) {
         s = s.replace(/([^%0-9a-z])\*+$/, '$1');
+        this.anchor &= ~0x1;
     }
 
     // nothing left?
@@ -1794,6 +1862,10 @@ FilterParser.prototype.parse = function(raw) {
 // Hostname-anchored with no wildcard always have a token index of 0.
 var reHostnameToken = /^[0-9a-z]+/;
 var reGoodToken = /[%0-9a-z]{2,}/g;
+var reRegexToken = /[%0-9A-Za-z]{2,}/g;
+var reRegexTokenAbort = /[([]/;
+var reRegexBadPrefix = /(^|[^\\]\.|[*?{}\\])$/;
+var reRegexBadSuffix = /^([^\\]\.|\\[dw]|[([{}?*]|$)/;
 
 var badTokens = new Set([
     'com',
@@ -1808,9 +1880,10 @@ var badTokens = new Set([
     'www'
 ]);
 
-var findFirstGoodToken = function(s) {
+FilterParser.prototype.findFirstGoodToken = function() {
     reGoodToken.lastIndex = 0;
-    var matches, lpos,
+    var s = this.f,
+        matches, lpos,
         badTokenMatch = null;
     while ( (matches = reGoodToken.exec(s)) !== null ) {
         // https://github.com/gorhill/uBlock/issues/997
@@ -1833,19 +1906,48 @@ var findFirstGoodToken = function(s) {
     return badTokenMatch;
 };
 
+FilterParser.prototype.extractTokenFromRegex = function() {
+    reRegexToken.lastIndex = 0;
+    var s = this.f,
+        matches, prefix;
+    while ( (matches = reRegexToken.exec(s)) !== null ) {
+        prefix = s.slice(0, matches.index);
+        if ( reRegexTokenAbort.test(prefix) ) { return; }
+        if (
+            reRegexBadPrefix.test(prefix) ||
+            reRegexBadSuffix.test(s.slice(reRegexToken.lastIndex))
+        ) {
+            continue;
+        }
+        this.token = matches[0].toLowerCase();
+        this.tokenHash = µb.urlTokenizer.tokenHashFromString(this.token);
+        this.tokenBeg = matches.index;
+        if ( badTokens.has(this.token) === false ) { break; }
+    }
+};
+
 /******************************************************************************/
 
+// https://github.com/chrisaljoudi/uBlock/issues/1038
+// Single asterisk will match any URL.
+
+// https://github.com/gorhill/uBlock/issues/2781
+//   For efficiency purpose, try to extract a token from a regex-based filter.
+
 FilterParser.prototype.makeToken = function() {
-    // https://github.com/chrisaljoudi/uBlock/issues/1038
-    // Single asterisk will match any URL.
-    if ( this.isRegex || this.f === '*' ) { return; }
+    if ( this.isRegex ) {
+        this.extractTokenFromRegex();
+        return;
+    }
+
+    if ( this.f === '*' ) { return; }
 
     var matches = null;
     if ( (this.anchor & 0x4) !== 0 && this.f.indexOf('*') === -1 ) {
         matches = reHostnameToken.exec(this.f);
     }
     if ( matches === null ) {
-        matches = findFirstGoodToken(this.f);
+        matches = this.findFirstGoodToken();
     }
     if ( matches !== null ) {
         this.token = matches[0];
@@ -1906,8 +2008,8 @@ FilterContainer.prototype.freeze = function() {
     this.fdataLast = null;
     this.filterLast = null;
     this.frozen = true;
-    //console.log(JSON.stringify(Array.from(filterClassHistogram)));
-    //this.tokenHistogram = new Map(Array.from(this.tokenHistogram).sort(function(a, b) {
+    //console.log(JSON.stringify(µb.arrayFrom(filterClassHistogram)));
+    //this.tokenHistogram = new Map(µb.arrayFrom(this.tokenHistogram).sort(function(a, b) {
     //    return a[0].localeCompare(b[0]) || (b[1] - a[1]);
     //}));
 };
@@ -2014,6 +2116,9 @@ FilterContainer.prototype.compile = function(raw, writer) {
         return false;
     }
 
+    // 0 = network filters
+    writer.select(0);
+
     // Pure hostnames, use more efficient dictionary lookup
     // https://github.com/chrisaljoudi/uBlock/issues/665
     // Create a dict keyed on request type etc.
@@ -2057,6 +2162,8 @@ FilterContainer.prototype.compile = function(raw, writer) {
         fdata = FilterPlainLeftAnchored.compile(parsed);
     } else if ( parsed.anchor === 0x1 ) {
         fdata = FilterPlainRightAnchored.compile(parsed);
+    } else if ( parsed.anchor === 0x3 ) {
+        fdata = FilterExactMatch.compile(parsed);
     } else if ( parsed.tokenBeg === 0 ) {
         fdata = FilterPlainPrefix0.compile(parsed);
     } else if ( parsed.tokenBeg === 1 ) {
@@ -2160,8 +2267,12 @@ FilterContainer.prototype.fromCompiledContent = function(reader) {
         filterPairId = FilterPair.fid,
         filterBucketId = FilterBucket.fid,
         filterDataHolderId = FilterDataHolder.fid,
+        redirectTypeValue = typeNameToTypeValue.redirect,
         args, bits, bucket, entry,
         tokenHash, fdata, fingerprint;
+
+    // 0 = network filters
+    reader.select(0);
 
     while ( reader.next() === true ) {
         args = reader.args();
@@ -2174,7 +2285,7 @@ FilterContainer.prototype.fromCompiledContent = function(reader) {
 
         // Special cases: delegate to more specialized engines.
         // Redirect engine.
-        if ( (bits >>> 4) === 17 ) {
+        if ( (bits & 0x1F0) === redirectTypeValue ) {
             µb.redirectEngine.fromCompiledRule(args[1]);
             continue;
         }

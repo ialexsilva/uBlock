@@ -1,7 +1,7 @@
 /*******************************************************************************
 
     uBlock Origin - a browser extension to block requests.
-    Copyright (C) 2015-2016 Raymond Hill
+    Copyright (C) 2015-2017 Raymond Hill
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -54,7 +54,7 @@ var messaging = vAPI.messaging;
 /******************************************************************************/
 
 var onCloudDataReceived = function(entry) {
-    if ( typeof entry !== 'object' || entry === null ) {
+    if ( entry instanceof Object === false ) {
         return;
     }
 
@@ -106,7 +106,15 @@ var pushData = function() {
             datakey: self.cloud.datakey,
             data: self.cloud.onPush()
         },
-        fetchCloudData
+        function(error) {
+            var failed = typeof error === 'string';
+            document.getElementById('cloudPush')
+                    .classList
+                    .toggle('error', failed);
+            document.querySelector('#cloudError > span')
+                    .textContent = failed ? error : '';
+            fetchCloudData();
+        }
     );
 };
 
@@ -149,7 +157,7 @@ var closeOptions = function(ev) {
 
 var submitOptions = function() {
     var onOptions = function(options) {
-        if ( typeof options !== 'object' || options === null ) {
+        if ( options instanceof Object === false ) {
             return;
         }
         self.cloud.options = options;
@@ -180,32 +188,36 @@ var onInitialize = function(options) {
     }
     self.cloud.options = options;
 
-    fetchCloudData();
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', 'cloud-ui.html', true);
+    xhr.overrideMimeType('text/html;charset=utf-8');
+    xhr.responseType = 'text';
+    xhr.onload = function() {
+        this.onload = null;
+        var parser = new DOMParser(),
+            parsed = parser.parseFromString(this.responseText, 'text/html'),
+            fromParent = parsed.body;
+        while ( fromParent.firstElementChild !== null ) {
+            widget.appendChild(
+                document.adoptNode(fromParent.firstElementChild)
+            );
+        }
 
-    var html = [
-        '<button id="cloudPush" type="button" title="cloudPush"></button>',
-        '<span data-i18n="cloudNoData"></span>',
-        '<button id="cloudPull" type="button" title="cloudPull" disabled></button>&nbsp;',
-        '<button id="cloudPullAndMerge" type="button" title="cloudPullAndMerge" disabled></button>',
-        '<span id="cloudCog" class="fa">&#xf013;</span>',
-        '<div id="cloudOptions">',
-        '    <div>',
-        '        <p><label data-i18n="cloudDeviceNamePrompt"></label> <input id="cloudDeviceName" type="text" value="">',
-        '        <p><button id="cloudOptionsSubmit" type="button" data-i18n="genericSubmit"></button>',
-        '    </div>',
-        '</div>',
-    ].join('');
+        vAPI.i18n.render(widget);
+        widget.classList.remove('hide');
 
-    vAPI.insertHTML(widget, html);
-    vAPI.i18n.render(widget);
-    widget.classList.remove('hide');
-
-    uDom('#cloudPush').on('click', pushData);
-    uDom('#cloudPull').on('click', pullData);
-    uDom('#cloudPullAndMerge').on('click', pullAndMergeData);
-    uDom('#cloudCog').on('click', openOptions);
-    uDom('#cloudOptions').on('click', closeOptions);
-    uDom('#cloudOptionsSubmit').on('click', submitOptions);
+        uDom('#cloudPush').on('click', pushData);
+        uDom('#cloudPull').on('click', pullData);
+        uDom('#cloudPullAndMerge').on('click', pullAndMergeData);
+        uDom('#cloudCog').on('click', openOptions);
+        uDom('#cloudOptions').on('click', closeOptions);
+        uDom('#cloudOptionsSubmit').on('click', submitOptions);
+        
+        // Patch 2018-01-05: Must not assume this XHR will always be faster
+        // than messaging
+        fetchCloudData();
+    };
+    xhr.send();
 };
 
 messaging.send('cloudWidget', { what: 'cloudGetOptions' }, onInitialize);

@@ -1,7 +1,7 @@
 /*******************************************************************************
 
     uBlock Origin - a browser extension to block requests.
-    Copyright (C) 2014-2017 Raymond Hill
+    Copyright (C) 2014-2018 Raymond Hill
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -80,7 +80,48 @@
 
 /******************************************************************************/
 
-// For now, only boolean type is supported.
+µBlock.loadHiddenSettings = function() {
+    var onLoaded = function(bin) {
+        if ( bin instanceof Object === false ) { return; }
+        var µb = µBlock,
+            hs = bin.hiddenSettings;
+        // Remove following condition once 1.15.12+ is widespread.
+        if (
+            hs instanceof Object === false &&
+            typeof bin.hiddenSettingsString === 'string'
+        ) {
+            vAPI.storage.remove('hiddenSettingsString');
+            hs = µBlock.hiddenSettingsFromString(bin.hiddenSettingsString);
+        }
+        if ( hs instanceof Object ) {
+            var hsDefault = µb.hiddenSettingsDefault;
+            for ( var key in hsDefault ) {
+                if (
+                    hsDefault.hasOwnProperty(key) &&
+                    hs.hasOwnProperty(key) &&
+                    typeof hs[key] === typeof hsDefault[key]
+                ) {
+                    µb.hiddenSettings[key] = hs[key];
+                }
+            }
+        }
+        if ( vAPI.localStorage.getItem('immediateHiddenSettings') === null ) {
+            µb.saveImmediateHiddenSettings();
+        }
+    };
+
+    vAPI.storage.get(
+        [ 'hiddenSettings', 'hiddenSettingsString'],
+        onLoaded
+    );
+};
+
+µBlock.saveHiddenSettings = function(callback) {
+    vAPI.storage.set({ hiddenSettings: this.hiddenSettings, callback });
+    this.saveImmediateHiddenSettings();
+};
+
+/******************************************************************************/
 
 µBlock.hiddenSettingsFromString = function(raw) {
     var out = objectAssign({}, this.hiddenSettingsDefault),
@@ -114,23 +155,35 @@
             break;
         }
     }
-    this.hiddenSettings = out;
-    vAPI.localStorage.setItem('hiddenSettings', JSON.stringify(out));
-    vAPI.storage.set({ hiddenSettingsString: this.stringFromHiddenSettings() });
+    return out;
 };
-
-/******************************************************************************/
 
 µBlock.stringFromHiddenSettings = function() {
     var out = [],
-        keys = Object.keys(this.hiddenSettings).sort(),
-        key;
-    for ( var i = 0; i < keys.length; i++ ) {
-        key = keys[i];
+        keys = Object.keys(this.hiddenSettings).sort();
+    for ( var key of keys ) {
         out.push(key + ' ' + this.hiddenSettings[key]);
     }
     return out.join('\n');
 };
+
+/******************************************************************************/
+
+// These settings must be available immediately on startup, without delay
+// through the vAPI.localStorage. Add/remove settings as needed.
+
+µBlock.saveImmediateHiddenSettings = function() {
+    vAPI.localStorage.setItem(
+        'immediateHiddenSettings',
+        JSON.stringify({
+            suspendTabsUntilReady: this.hiddenSettings.suspendTabsUntilReady,
+            userResourcesLocation: this.hiddenSettings.userResourcesLocation
+        })
+    );
+};
+
+// Do this here to have these hidden settings loaded ASAP.
+µBlock.loadHiddenSettings();
 
 /******************************************************************************/
 
@@ -168,29 +221,21 @@
 
 µBlock.loadSelectedFilterLists = function(callback) {
     var µb = this;
-    vAPI.storage.get([ 'selectedFilterLists', 'remoteBlacklists' ], function(bin) {
-        if ( !bin || !bin.selectedFilterLists && !bin.remoteBlacklists ) {
-            // Select default filter lists if first-time launch.
+    vAPI.storage.get('selectedFilterLists', function(bin) {
+        // Select default filter lists if first-time launch.
+        if ( !bin || Array.isArray(bin.selectedFilterLists) === false ) {
             µb.assets.metadata(function(availableLists) {
-                µb.saveSelectedFilterLists(µb.autoSelectRegionalFilterLists(availableLists));
+                µb.saveSelectedFilterLists(
+                    µb.autoSelectRegionalFilterLists(availableLists)
+                );
                 callback();
             });
             return;
         }
-        var listKeys = [];
-        if ( bin.selectedFilterLists ) {
-            listKeys = bin.selectedFilterLists;
-        } else if ( bin.remoteBlacklists ) {
-            var oldListKeys = µb.newListKeysFromOldData(bin.remoteBlacklists);
-            if ( oldListKeys.sort().join() !== listKeys.sort().join() ) {
-                listKeys = oldListKeys;
-                µb.saveSelectedFilterLists(listKeys);
-            }
-            // TODO(seamless migration):
-            // Uncomment when all have moved to v1.11 and beyond.
-            //vAPI.storage.remove('remoteBlacklists');
-        }
-        µb.selectedFilterLists = listKeys;
+        // TODO: Removes once 1.1.15 is in widespread use.
+        // https://github.com/gorhill/uBlock/issues/3383
+        vAPI.storage.remove('remoteBlacklists');
+        µb.selectedFilterLists = bin.selectedFilterLists;
         callback();
     });
 };
@@ -211,64 +256,13 @@
             this.removeFilterList(oldKeys[i]);
         }
     }
-    newKeys = this.setToArray(newSet);
+    newKeys = this.arrayFrom(newSet);
     var bin = {
-        selectedFilterLists: newKeys,
-        remoteBlacklists: this.oldDataFromNewListKeys(newKeys)
+        selectedFilterLists: newKeys
     };
     this.selectedFilterLists = newKeys;
     vAPI.storage.set(bin, callback);
 };
-
-// TODO(seamless migration):
-// Remove when all have moved to v1.11 and beyond.
-// >>>>>>>>
-µBlock.newListKeysFromOldData = function(oldLists) {
-    var aliases = this.assets.listKeyAliases,
-        listKeys = [], newKey;
-    for ( var oldKey in oldLists ) {
-        if ( oldLists[oldKey].off !== true ) {
-            newKey = aliases[oldKey];
-            listKeys.push(newKey ? newKey : oldKey);
-        }
-    }
-    return listKeys;
-};
-
-µBlock.oldDataFromNewListKeys = function(selectedFilterLists) {
-    var µb = this,
-        remoteBlacklists = {};
-    var reverseAliases = Object.keys(this.assets.listKeyAliases).reduce(
-        function(a, b) {
-            a[µb.assets.listKeyAliases[b]] = b; return a;
-        },
-        {}
-    );
-    remoteBlacklists = selectedFilterLists.reduce(
-        function(a, b) {
-            a[reverseAliases[b] || b] = { off: false };
-            return a;
-        },
-        {}
-    );
-    remoteBlacklists = Object.keys(µb.assets.listKeyAliases).reduce(
-        function(a, b) {
-            var aliases = µb.assets.listKeyAliases;
-            if (
-                b.startsWith('assets/') &&
-                aliases[b] !== 'public_suffix_list.dat' &&
-                aliases[b] !== 'ublock-resources' &&
-                !a[b]
-            ) {
-                a[b] = { off: true };
-            }
-            return a;
-        },
-        remoteBlacklists
-    );
-    return remoteBlacklists;
-};
-// <<<<<<<<
 
 /******************************************************************************/
 
@@ -295,7 +289,7 @@
             return haystack.replace(
                 new RegExp(
                     '(^|\\n)' +
-                    needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
+                    µb.escapeRegex(needle) +
                     '(\\n|$)', 'g'),
                 '\n'
             ).trim();
@@ -342,10 +336,10 @@
             }
             selectedListKeySet.add(assetKey);
         }
-        externalLists = this.setToArray(importedSet).sort().join('\n');
+        externalLists = this.arrayFrom(importedSet).sort().join('\n');
     }
 
-    var result = this.setToArray(selectedListKeySet);
+    var result = this.arrayFrom(selectedListKeySet);
     if ( externalLists !== this.userSettings.externalLists ) {
         this.userSettings.externalLists = externalLists;
         vAPI.storage.set({ externalLists: externalLists });
@@ -371,7 +365,7 @@
         }
         out.add(location);
     }
-    return this.setToArray(out);
+    return this.arrayFrom(out);
 };
 
 /******************************************************************************/
@@ -411,7 +405,7 @@
         vAPI.storage.set({ 'availableFilterLists': µb.availableFilterLists });
         µb.staticNetFilteringEngine.freeze();
         µb.redirectEngine.freeze();
-        µb.cosmeticFilteringEngine.freeze();
+        µb.staticExtFilteringEngine.freeze();
         µb.selfieManager.destroy();
     };
 
@@ -439,7 +433,7 @@
             selectedListKeys.push(key);
             continue;
         }
-        if ( this.matchCurrentLanguage(list.lang) ) {
+        if ( this.listMatchesEnvironment(list) ) {
             selectedListKeys.push(key);
             list.off = false;
         }
@@ -467,7 +461,7 @@
         listKey = importedListKeys[i];
         entry = {
             content: 'filters',
-            contentURL: importedListKeys[i],
+            contentURL: listKey,
             external: true,
             group: 'custom',
             submitter: 'user',
@@ -476,6 +470,31 @@
         newAvailableLists[listKey] = entry;
         this.assets.registerAssetSource(listKey, entry);
     }
+
+    // Convert a no longer existing stock list into an imported list.
+    var customListFromStockList = function(assetKey) {
+        var oldEntry = oldAvailableLists[assetKey];
+        if ( oldEntry === undefined || oldEntry.off === true ) { return; }
+        var listURL = oldEntry.contentURL;
+        if ( Array.isArray(listURL) ) {
+            listURL = listURL[0];
+        }
+        var newEntry = {
+            content: 'filters',
+            contentURL: listURL,
+            external: true,
+            group: 'custom',
+            submitter: 'user',
+            title: oldEntry.title || ''
+        };
+        newAvailableLists[listURL] = newEntry;
+        µb.assets.registerAssetSource(listURL, newEntry);
+        importedListKeys.push(listURL);
+        µb.userSettings.externalLists += '\n' + listURL;
+        µb.userSettings.externalLists = µb.userSettings.externalLists.trim();
+        vAPI.storage.set({ externalLists: µb.userSettings.externalLists });
+        µb.saveSelectedFilterLists([ listURL ], true);
+    };
 
     // Final steps:
     // - reuse existing list metadata if any;
@@ -487,8 +506,13 @@
         for ( assetKey in oldAvailableLists ) {
             oldEntry = oldAvailableLists[assetKey];
             newEntry = newAvailableLists[assetKey];
+            // List no longer exists. If a stock list, try to convert to
+            // imported list if it was selected.
             if ( newEntry === undefined ) {
                 µb.removeFilterList(assetKey);
+                if ( assetKey.indexOf('://') === -1 ) {
+                    customListFromStockList(assetKey);
+                }
                 continue;
             }
             if ( oldEntry.entryCount !== undefined ) {
@@ -567,8 +591,6 @@
     }
     this.loadingFilterLists = true;
 
-    //quickProfiler.start('µBlock.loadFilterLists()');
-
     var µb = this,
         filterlistsCount = 0,
         loadedListKeys = [];
@@ -579,11 +601,9 @@
 
     var onDone = function() {
         µb.staticNetFilteringEngine.freeze();
-        µb.cosmeticFilteringEngine.freeze();
+        µb.staticExtFilteringEngine.freeze();
         µb.redirectEngine.freeze();
         vAPI.storage.set({ 'availableFilterLists': µb.availableFilterLists });
-
-        //quickProfiler.stop(0);
 
         vAPI.messaging.broadcast({
             what: 'staticFilteringDataChanged',
@@ -600,14 +620,16 @@
 
     var applyCompiledFilters = function(assetKey, compiled) {
         var snfe = µb.staticNetFilteringEngine,
-            cfe = µb.cosmeticFilteringEngine,
-            acceptedCount = snfe.acceptedCount + cfe.acceptedCount,
-            discardedCount = snfe.discardedCount + cfe.discardedCount;
+            sxfe = µb.staticExtFilteringEngine,
+            acceptedCount = snfe.acceptedCount + sxfe.acceptedCount,
+            discardedCount = snfe.discardedCount + sxfe.discardedCount;
         µb.applyCompiledFilters(compiled, assetKey === µb.userFiltersPath);
         if ( µb.availableFilterLists.hasOwnProperty(assetKey) ) {
             var entry = µb.availableFilterLists[assetKey];
-            entry.entryCount = snfe.acceptedCount + cfe.acceptedCount - acceptedCount;
-            entry.entryUsedCount = entry.entryCount - (snfe.discardedCount + cfe.discardedCount - discardedCount);
+            entry.entryCount = snfe.acceptedCount + sxfe.acceptedCount -
+                acceptedCount;
+            entry.entryUsedCount = entry.entryCount -
+                (snfe.discardedCount + sxfe.discardedCount - discardedCount);
         }
         loadedListKeys.push(assetKey);
     };
@@ -624,7 +646,7 @@
         µb.availableFilterLists = lists;
 
         µb.redirectEngine.reset();
-        µb.cosmeticFilteringEngine.reset();
+        µb.staticExtFilteringEngine.reset();
         µb.staticNetFilteringEngine.reset();
         µb.selfieManager.destroy();
         µb.staticFilteringReverseLookup.resetLists();
@@ -741,23 +763,22 @@
 /******************************************************************************/
 
 µBlock.compileFilters = function(rawText) {
-    var networkFilters = new this.CompiledLineWriter(),
-        cosmeticFilters = new this.CompiledLineWriter();
+    var writer = new this.CompiledLineWriter();
 
     // Useful references:
     //    https://adblockplus.org/en/filter-cheatsheet
     //    https://adblockplus.org/en/filters
     var staticNetFilteringEngine = this.staticNetFilteringEngine,
-        cosmeticFilteringEngine = this.cosmeticFilteringEngine,
+        staticExtFilteringEngine = this.staticExtFilteringEngine,
         reIsWhitespaceChar = /\s/,
         reMaybeLocalIp = /^[\d:f]/,
-        reIsLocalhostRedirect = /\s+(?:broadcasthost|local|localhost|localhost\.localdomain)(?=\s|$)/,
+        reIsLocalhostRedirect = /\s+(?:broadcasthost|local|localhost|localhost\.localdomain)\b/,
         reLocalIp = /^(?:0\.0\.0\.0|127\.0\.0\.1|::1|fe80::1%lo0)/,
-        line, lineRaw, c, pos,
+        line, c, pos,
         lineIter = new this.LineIterator(rawText);
 
     while ( lineIter.eot() === false ) {
-        line = lineRaw = lineIter.next().trim();
+        line = lineIter.next().trim();
 
         // rhill 2014-04-18: The trim is important here, as without it there
         // could be a lingering `\r` which would cause problems in the
@@ -771,9 +792,7 @@
 
         // Parse or skip cosmetic filters
         // All cosmetic filters are caught here
-        if ( cosmeticFilteringEngine.compile(line, cosmeticFilters) ) {
-            continue;
-        }
+        if ( staticExtFilteringEngine.compile(line, writer) ) { continue; }
 
         // Whatever else is next can be assumed to not be a cosmetic filter
 
@@ -805,12 +824,10 @@
 
         if ( line.length === 0 ) { continue; }
 
-        staticNetFilteringEngine.compile(line, networkFilters);
+        staticNetFilteringEngine.compile(line, writer);
     }
 
-    return networkFilters.toString() +
-           '\n/* end of network - start of cosmetic */\n' +
-           cosmeticFilters.toString();
+    return writer.toString();
 };
 
 /******************************************************************************/
@@ -821,30 +838,22 @@
 
 µBlock.applyCompiledFilters = function(rawText, firstparty) {
     if ( rawText === '' ) { return; }
-    var separator = '\n/* end of network - start of cosmetic */\n',
-        pos = rawText.indexOf(separator),
-        reader = new this.CompiledLineReader(rawText.slice(0, pos));
+    var reader = new this.CompiledLineReader(rawText);
     this.staticNetFilteringEngine.fromCompiledContent(reader);
-    this.cosmeticFilteringEngine.fromCompiledContent(
-        reader.reset(rawText.slice(pos + separator.length)),
-        this.userSettings.ignoreGenericCosmeticFilters,
-        !firstparty && !this.userSettings.parseAllABPHideFilters
-    );
+    this.staticExtFilteringEngine.fromCompiledContent(reader, {
+        skipGenericCosmetic: this.userSettings.ignoreGenericCosmeticFilters,
+        skipCosmetic: !firstparty && !this.userSettings.parseAllABPHideFilters
+    });
 };
 
 /******************************************************************************/
 
-µBlock.loadRedirectResources = function(callback) {
+µBlock.loadRedirectResources = function(updatedContent) {
     var µb = this,
         content = '';
 
-    if ( typeof callback !== 'function' ) {
-        callback = this.noopFunc;
-    }
-
     var onDone = function() {
         µb.redirectEngine.resourcesFromString(content);
-        callback();
     };
 
     var onUserResourcesLoaded = function(details) {
@@ -864,7 +873,17 @@
         µb.assets.fetchText(µb.hiddenSettings.userResourcesLocation, onUserResourcesLoaded);
     };
 
-    this.assets.get('ublock-resources', onResourcesLoaded);
+    if ( typeof updatedContent === 'string' && updatedContent.length !== 0 ) {
+        return onResourcesLoaded({ content: updatedContent });
+    }
+
+    var onSelfieReady = function(success) {
+        if ( success !== true ) {
+            µb.assets.get('ublock-resources', onResourcesLoaded);
+        }
+    };
+
+    µb.redirectEngine.resourcesFromSelfie(onSelfieReady);
 };
 
 /******************************************************************************/
@@ -923,7 +942,7 @@
             availableFilterLists: this.availableFilterLists,
             staticNetFilteringEngine: this.staticNetFilteringEngine.toSelfie(),
             redirectEngine: this.redirectEngine.toSelfie(),
-            cosmeticFilteringEngine: this.cosmeticFilteringEngine.toSelfie()
+            staticExtFilteringEngine: this.staticExtFilteringEngine.toSelfie()
         };
         vAPI.cacheStorage.set({ selfie: selfie });
     }.bind(µBlock);
@@ -1002,9 +1021,6 @@
         if ( Array.isArray(data.selectedFilterLists) ) {
             bin.selectedFilterLists = data.selectedFilterLists;
             binNotEmpty = true;
-        } else if ( typeof data.filterLists === 'object' ) {
-            bin.selectedFilterLists = µb.newListKeysFromOldData(data.filterLists);
-            binNotEmpty = true;
         }
 
         if ( typeof data.netWhitelist === 'string' ) {
@@ -1039,6 +1055,33 @@
     };
 
     vAPI.adminStorage.getItem('adminSettings', onRead);
+};
+
+/******************************************************************************/
+
+// https://github.com/gorhill/uBlock/issues/2344
+//   Support mutliple locales per filter list.
+
+// https://github.com/gorhill/uBlock/issues/3210
+//   Support ability to auto-enable a filter list based on user agent.
+
+µBlock.listMatchesEnvironment = function(details) {
+    var re;
+    // Matches language?
+    if ( typeof details.lang === 'string' ) {
+        re = this.listMatchesEnvironment.reLang;
+        if ( re === undefined ) {
+            re = new RegExp('\\b' + self.navigator.language.slice(0, 2) + '\\b');
+            this.listMatchesEnvironment.reLang = re;
+        }
+        if ( re.test(details.lang) ) { return true; }
+    }
+    // Matches user agent?
+    if ( typeof details.ua === 'string' ) {
+        re = new RegExp('\\b' + this.escapeRegex(details.ua) + '\\b', 'i');
+        if ( re.test(self.navigator.userAgent) ) { return true; }
+    }
+    return false;
 };
 
 /******************************************************************************/
@@ -1082,7 +1125,7 @@
                 this.availableFilterLists.hasOwnProperty(details.assetKey) === false ||
                 this.selectedFilterLists.indexOf(details.assetKey) === -1
             ) {
-                return false;
+                return;
             }
         }
         // https://github.com/gorhill/uBlock/issues/2594
@@ -1091,10 +1134,10 @@
                 this.hiddenSettings.ignoreRedirectFilters === true &&
                 this.hiddenSettings.ignoreScriptInjectFilters === true
             ) {
-                return false;
+                return;
             }
         }
-        return;
+        return true;
     }
 
     // Compile the list while we have the raw version in memory
@@ -1120,8 +1163,9 @@
                 this.compilePublicSuffixList(details.content);
             }
         } else if ( details.assetKey === 'ublock-resources' ) {
+            this.redirectEngine.invalidateResourcesSelfie();
             if ( cached ) {
-                this.redirectEngine.resourcesFromString(details.content);
+                this.loadRedirectResources(details.content);
             }
         }
         vAPI.messaging.broadcast({
@@ -1170,7 +1214,7 @@
         if ( details.entry.content === 'filters' ) {
             if (
                 details.entry.off !== true ||
-                this.matchCurrentLanguage(details.entry.lang)
+                this.listMatchesEnvironment(details.entry)
             ) {
                 this.saveSelectedFilterLists([ details.assetKey ], true);
             }

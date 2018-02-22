@@ -2,25 +2,16 @@
     "manifest_version": 2,
 
     "name": "uBlock Origin",
-    "version": "1.12.5.102",
+    "version": "1.15.11.0",
 
     "commands": {
         "launch-element-zapper": {
-            "suggested_key": {
-              "default": "Alt+Z"
-            },
             "description": "__MSG_popupTipZapper__"
         },
         "launch-element-picker": {
-            "suggested_key": {
-              "default": "Alt+X"
-            },
             "description": "__MSG_popupTipPicker__"
         },
         "launch-logger": {
-            "suggested_key": {
-              "default": "Alt+L"
-            },
             "description": "__MSG_popupTipLog__"
         }
     },
@@ -47,19 +38,19 @@
     "content_scripts": [
         {
             "matches": ["http://*/*", "https://*/*"],
-            "js": ["js/vapi-client.js", "js/contentscript.js"],
+            "js": ["/js/vapi.js", "/js/vapi-client.js", "/js/contentscript.js"],
             "run_at": "document_start",
             "all_frames": true
         },
         {
             "matches": ["http://*/*", "https://*/*"],
-            "js": ["js/scriptlets/subscriber.js"],
+            "js": ["/js/scriptlets/subscriber.js"],
             "run_at": "document_idle",
             "all_frames": false
         }
     ],
     "incognito": "split",
-    "minimum_chrome_version": "38.0",
+    "minimum_chrome_version": "45.0",
     "optional_permissions": [ "file:///*" ],
     "options_page": "dashboard.html",
     "options_ui": {
@@ -79,5 +70,8 @@
     "short_name": "uBlock₀",
     "storage": {
         "managed_schema": "managed_storage.json"
-    }
+    },
+    "web_accessible_resources": [
+        "/web_accessible_resources/*"
+    ]
 }

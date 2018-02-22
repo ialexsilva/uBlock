@@ -1,7 +1,7 @@
 /*******************************************************************************
 
     uBlock Origin - a browser extension to block requests.
-    Copyright (C) 2014-2017 Raymond Hill
+    Copyright (C) 2014-2018 Raymond Hill
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,8 +29,6 @@
 
 µBlock.restart = (function() {
 
-//quickProfiler.start('start.js');
-
 /******************************************************************************/
 
 var µb = µBlock;
@@ -41,7 +39,7 @@ vAPI.app.onShutdown = function() {
     µb.staticFilteringReverseLookup.shutdown();
     µb.assets.updateStop();
     µb.staticNetFilteringEngine.reset();
-    µb.cosmeticFilteringEngine.reset();
+    µb.staticExtFilteringEngine.reset();
     µb.sessionFirewall.reset();
     µb.permanentFirewall.reset();
     µb.permanentFirewall.reset();
@@ -85,8 +83,6 @@ var onAllReady = function() {
         ]);
     }
 
-    //quickProfiler.stop(0);
-
     µb.contextMenu.update(null);
     µb.firstInstall = false;
 
@@ -107,18 +103,6 @@ var onPSLReady = function() {
 // To bring older versions up to date
 
 var onVersionReady = function(lastVersion) {
-    // Starting with 1.9.17, non-advanced users can have access to the dynamic
-    // filtering pane in read-only mode. Still, it should not be visible by
-    // default.
-    if ( lastVersion.localeCompare('1.9.17') < 0 ) {
-        if (
-            µb.userSettings.advancedUserEnabled === false &&
-            µb.userSettings.dynamicFilteringEnabled === true
-        ) {
-            µb.userSettings.dynamicFilteringEnabled = false;
-            µb.keyvalSetOne('dynamicFilteringEnabled', false);
-        }
-    }
     if ( lastVersion !== vAPI.app.version ) {
         vAPI.storage.set({ version: vAPI.app.version });
     }
@@ -127,7 +111,10 @@ var onVersionReady = function(lastVersion) {
 /******************************************************************************/
 
 var onSelfieReady = function(selfie) {
-    if ( selfie === null || selfie.magic !== µb.systemSettings.selfieMagic ) {
+    if (
+        selfie instanceof Object === false ||
+        selfie.magic !== µb.systemSettings.selfieMagic
+    ) {
         return false;
     }
     if ( publicSuffixList.fromSelfie(selfie.publicSuffixList) !== true ) {
@@ -140,7 +127,9 @@ var onSelfieReady = function(selfie) {
     µb.availableFilterLists = selfie.availableFilterLists;
     µb.staticNetFilteringEngine.fromSelfie(selfie.staticNetFilteringEngine);
     µb.redirectEngine.fromSelfie(selfie.redirectEngine);
-    µb.cosmeticFilteringEngine.fromSelfie(selfie.cosmeticFilteringEngine);
+    µb.staticExtFilteringEngine.fromSelfie(selfie.staticExtFilteringEngine);
+    µb.loadRedirectResources();
+
     return true;
 };
 
@@ -221,13 +210,13 @@ var onFirstFetchReady = function(fetched) {
     onNetWhitelistReady(fetched.netWhitelist);
     onVersionReady(fetched.version);
 
-    // If we have a selfie, skip loading PSL, filters
-    if ( onSelfieReady(fetched.selfie) ) {
-        onAllReady();
-        return;
-    }
-
-    µb.loadPublicSuffixList(onPSLReady);
+    // If we have a selfie, skip loading PSL, filter lists
+    vAPI.cacheStorage.get('selfie', function(bin) {
+        if ( bin instanceof Object && onSelfieReady(bin.selfie) ) {
+            return onAllReady();
+        }
+        µb.loadPublicSuffixList(onPSLReady);
+    });
 };
 
 /******************************************************************************/
@@ -266,7 +255,6 @@ var onSelectedFilterListsLoaded = function() {
         'lastBackupFile': '',
         'lastBackupTime': 0,
         'netWhitelist': µb.netWhitelistDefault,
-        'selfie': null,
         'selfieMagic': '',
         'version': '0.0.0.0'
     };

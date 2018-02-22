@@ -1,7 +1,7 @@
 /*******************************************************************************
 
     uBlock Origin - a browser extension to block requests.
-    Copyright (C) 2014-2017 Raymond Hill
+    Copyright (C) 2014-2018 Raymond Hill
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,7 +41,15 @@ var exports = {};
 //       which blocks everything until all is ready.
 //       This would allow to avoid the permanent special test at the top of
 //       the main onBeforeRequest just to implement this.
+// https://github.com/gorhill/uBlock/issues/3130
+//   Don't block root frame.
+
 var onBeforeReady = null;
+
+µBlock.onStartCompletedQueue.push(function(callback) {
+    vAPI.onLoadAllCompleted();
+    callback();
+});
 
 if ( µBlock.hiddenSettings.suspendTabsUntilReady ) {
     onBeforeReady = (function() {
@@ -53,17 +61,16 @@ if ( µBlock.hiddenSettings.suspendTabsUntilReady ) {
             }
             callback();
         });
-        return function(tabId) {
-            if ( vAPI.isBehindTheSceneTabId(tabId) ) { return; }
-            suspendedTabs.add(tabId);
-            return true;
+        return function(details) {
+            if (
+                details.type !== 'main_frame' &&
+                vAPI.isBehindTheSceneTabId(details.tabId) === false
+            ) {
+                suspendedTabs.add(details.tabId);
+                return true;
+            }
         };
     })();
-} else {
-    µBlock.onStartCompletedQueue.push(function(callback) {
-        vAPI.onLoadAllCompleted();
-        callback();
-    });
 }
 
 /******************************************************************************/
@@ -71,8 +78,7 @@ if ( µBlock.hiddenSettings.suspendTabsUntilReady ) {
 // Intercept and filter web requests.
 
 var onBeforeRequest = function(details) {
-    var tabId = details.tabId;
-    if ( onBeforeReady !== null && onBeforeReady(tabId) ) {
+    if ( onBeforeReady !== null && onBeforeReady(details) ) {
         return { cancel: true };
     }
 
@@ -86,6 +92,7 @@ var onBeforeRequest = function(details) {
     }
 
     // Special treatment: behind-the-scene requests
+    var tabId = details.tabId;
     if ( vAPI.isBehindTheSceneTabId(tabId) ) {
         return onBeforeBehindTheSceneRequest(details);
     }
@@ -302,23 +309,20 @@ var onBeforeRootFrameRequest = function(details) {
 
 /******************************************************************************/
 
+// https://github.com/gorhill/uBlock/issues/3208
+//   Mind case insensitivity.
+
 var toBlockDocResult = function(url, hostname, logData) {
-    if ( typeof logData.regex !== 'string' ) { return; }
-    var re = new RegExp(logData.regex),
+    if ( typeof logData.regex !== 'string' ) { return false; }
+    var re = new RegExp(logData.regex, 'i'),
         match = re.exec(url.toLowerCase());
-    if ( match === null ) { return ''; }
+    if ( match === null ) { return false; }
 
     // https://github.com/chrisaljoudi/uBlock/issues/1128
     // https://github.com/chrisaljoudi/uBlock/issues/1212
     // Relax the rule: verify that the match is completely before the path part
-    if (
-        (match.index + match[0].length) <=
-        (url.indexOf(hostname) + hostname.length + 1)
-    ) {
-        return true;
-    }
-
-    return false;
+    return (match.index + match[0].length) <=
+           (url.indexOf(hostname) + hostname.length + 1);
 };
 
 /******************************************************************************/
@@ -353,9 +357,12 @@ var onBeforeBehindTheSceneRequest = function(details) {
     // Blocking behind-the-scene requests can break a lot of stuff: prevent
     // browser updates, prevent extension updates, prevent extensions from
     // working properly, etc.
-    // So we filter if and only if the "advanced user" mode is selected
-    if ( µb.userSettings.advancedUserEnabled ) {
-        result = pageStore.filterRequestNoCache(context);
+    // So we filter if and only if the "advanced user" mode is selected.
+    // https://github.com/gorhill/uBlock/issues/3150
+    //   Ability to globally block CSP reports MUST also apply to
+    //   behind-the-scene network requests.
+    if ( µb.userSettings.advancedUserEnabled || requestType === 'csp_report' ) {
+        result = pageStore.filterRequest(context);
     }
 
     pageStore.journalAddRequest(context.requestHostname, result);
@@ -382,10 +389,101 @@ var onBeforeBehindTheSceneRequest = function(details) {
 
 /******************************************************************************/
 
+// https://github.com/gorhill/uBlock/issues/3140
+
+var onBeforeMaybeSpuriousCSPReport = function(details) {
+    var tabId = details.tabId;
+
+    // Ignore behind-the-scene requests.
+    if ( vAPI.isBehindTheSceneTabId(tabId) ) { return; }
+
+    // Lookup the page store associated with this tab id.
+    var µb = µBlock,
+        pageStore = µb.pageStoreFromTabId(tabId);
+    if ( pageStore === null ) { return; }
+
+    // If uBO is disabled for the page, it can't possibly causes CSP reports
+    // to be triggered.
+    if ( pageStore.getNetFilteringSwitch() === false ) { return; }
+
+    // A resource was redirected to a neutered one?
+    // TODO: mind injected scripts/styles as well.
+    if ( pageStore.internalRedirectionCount === 0 ) { return; }
+
+    var textDecoder = onBeforeMaybeSpuriousCSPReport.textDecoder;
+    if (
+        textDecoder === undefined &&
+        typeof self.TextDecoder === 'function'
+    ) {
+        textDecoder =
+        onBeforeMaybeSpuriousCSPReport.textDecoder = new TextDecoder();
+    }
+
+    // Find out whether the CSP report is a potentially spurious CSP report.
+    // If from this point on we are unable to parse the CSP report data, the
+    // safest assumption to protect users is to assume the CSP report is
+    // spurious.
+    if (
+        textDecoder !== undefined &&
+        details.method === 'POST'
+    ) {
+        var raw = details.requestBody && details.requestBody.raw;
+        if (
+            Array.isArray(raw) &&
+            raw.length !== 0 &&
+            raw[0] instanceof Object &&
+            raw[0].bytes instanceof ArrayBuffer
+        ) {
+            var data;
+            try {
+                data = JSON.parse(textDecoder.decode(raw[0].bytes));
+            } catch (ex) {
+            }
+            if ( data instanceof Object ) {
+                var report = data['csp-report'];
+                if ( report instanceof Object ) {
+                    var blocked = report['blocked-uri'] || report['blockedURI'],
+                        validBlocked = typeof blocked === 'string',
+                        source = report['source-file'] || report['sourceFile'],
+                        validSource = typeof source === 'string';
+                    if (
+                        (validBlocked || validSource) &&
+                        (!validBlocked || !blocked.startsWith('data')) &&
+                        (!validSource || !source.startsWith('data'))
+                    ) {
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    // Potentially spurious CSP report.
+    if ( µb.logger.isEnabled() ) {
+        var hostname = µb.URI.hostnameFromURI(details.url);
+        µb.logger.writeOne(
+            tabId,
+            'net',
+            { result: 1, source: 'global', raw: 'no-spurious-csp-report' },
+            'csp_report',
+            details.url,
+            hostname,
+            hostname
+        );
+    }
+
+    return { cancel: true };
+};
+
+onBeforeMaybeSpuriousCSPReport.textDecoder = undefined;
+
+/******************************************************************************/
+
 // To handle:
-// - inline script tags
-// - websockets
-// - media elements larger than n kB
+// - Media elements larger than n kB
+// - Scriptlet injection (requires ability to modify response body)
+// - HTML filtering (requires ability to modify response body)
+// - CSP injection
 
 var onHeadersReceived = function(details) {
     // Do not interfere with behind-the-scene requests.
@@ -393,15 +491,17 @@ var onHeadersReceived = function(details) {
     if ( vAPI.isBehindTheSceneTabId(tabId) ) { return; }
 
     var µb = µBlock,
-        requestType = details.type;
+        requestType = details.type,
+        isRootDoc = requestType === 'main_frame',
+        isDoc = isRootDoc || requestType === 'sub_frame';
 
-    if ( requestType === 'main_frame' ) {
+    if ( isRootDoc ) {
         µb.tabContextManager.push(tabId, details.url);
     }
 
     var pageStore = µb.pageStoreFromTabId(tabId);
     if ( pageStore === null ) {
-        if ( requestType !== 'main_frame' ) { return; }
+        if ( isRootDoc === false ) { return; }
         pageStore = µb.bindTabToPageStats(tabId, 'beforeRequest');
     }
     if ( pageStore.getNetFilteringSwitch() === false ) { return; }
@@ -410,14 +510,409 @@ var onHeadersReceived = function(details) {
         return foilLargeMediaElement(pageStore, details);
     }
 
-    // https://github.com/gorhill/uBO-Extra/issues/19
-    //   Turns out scripts must also be considered as potential embedded
-    //   contexts (as workers) and as such we may need to inject content
-    //   security policy directives.
-    if ( requestType === 'main_frame' || requestType === 'sub_frame' ) {
+    if ( isDoc && µb.canFilterResponseBody ) {
+        filterDocument(pageStore, details);
+    }
+
+    // https://github.com/gorhill/uBlock/issues/2813
+    //   Disable the blocking of large media elements if the document is itself
+    //   a media element: the resource was not prevented from loading so no
+    //   point to further block large media elements for the current document.
+    if ( isRootDoc ) {
+        if ( reMediaContentTypes.test(headerValueFromName('content-type', details.responseHeaders)) ) {
+            pageStore.allowLargeMediaElementsUntil = Date.now() + 86400000;
+        }
+        return injectCSP(pageStore, details);
+    }
+
+    if ( isDoc ) {
         return injectCSP(pageStore, details);
     }
 };
+
+var reMediaContentTypes = /^(?:audio|image|video)\//;
+
+/*******************************************************************************
+
+    The response body filterer is responsible for:
+
+    - Scriptlet filtering
+    - HTML filtering
+
+    In the spirit of efficiency, the response body filterer works this way:
+
+    If:
+        - HTML filtering: no.
+        - Scriptlet filtering: no.
+    Then:
+        No response body filtering is initiated.
+
+    If:
+        - HTML filtering: no.
+        - Scriptlet filtering: yes.
+    Then:
+        Inject scriptlets before first chunk of response body data reported
+        then immediately disconnect response body data listener.
+
+    If:
+        - HTML filtering: yes.
+        - Scriptlet filtering: no/yes.
+    Then:
+        Assemble all response body data into a single buffer. Once all the
+        response data has been received, create a document from it. Then:
+        - Inject scriptlets in the resulting DOM.
+        - Remove all DOM elements matching HTML filters.
+        Then serialize the resulting modified document as the new response
+        body.
+
+    This way, the overhead is minimal for when only scriptlets need to be
+    injected.
+
+    If the platform does not support response body filtering, the scriptlets
+    will be injected the old way, through the content script.
+
+**/
+
+var filterDocument = (function() {
+    var µb = µBlock,
+        filterers = new Map(),
+        domParser, xmlSerializer,
+        utf8TextDecoder, textDecoder, textEncoder;
+
+    var textDecode = function(encoding, buffer) {
+        if (
+            textDecoder !== undefined &&
+            textDecoder.encoding !== encoding
+        ) {
+            textDecoder = undefined;
+        }
+        if ( textDecoder === undefined ) {
+            textDecoder = new TextDecoder(encoding);
+        }
+        return textDecoder.decode(buffer);
+    };
+
+    var reContentTypeDocument = /^(?:text\/html|application\/xhtml+xml)/i,
+        reContentTypeCharset = /charset=['"]?([^'" ]+)/i;
+
+    var charsetFromContentType = function(contentType) {
+        var match = reContentTypeCharset.exec(contentType);
+        if ( match !== null ) {
+            return match[1].toLowerCase();
+        }
+    };
+
+    var charsetFromDoc = function(doc) {
+        var meta = doc.querySelector('meta[charset]');
+        if ( meta !== null ) {
+            return meta.getAttribute('charset').toLowerCase();
+        }
+        meta = doc.querySelector(
+            'meta[http-equiv="content-type" i][content]'
+        );
+        if ( meta !== null ) {
+            return charsetFromContentType(meta.getAttribute('content'));
+        }
+    };
+
+    // Purpose of following helper is to disconnect from watching the stream
+    // if all the following conditions are fulfilled:
+    // - Only need to inject scriptlets.
+    // - Charset of resource is utf-8.
+    // - A well-formed doc type declaration is found at the top.
+    //
+    // When all the conditions are fulfilled, then the scriptlets are safely
+    // injected after the doc type declaration, and the stream listener is
+    // disconnected, thus removing overhead from future streaming data.
+    //
+    // If at least one of the condition is not fulfilled and scriptlets need
+    // to be injected, it will be done the longer way when the whole stream
+    // has been collated in memory.
+
+    var streamJobDone = function(filterer, responseBytes) {
+        if (
+            filterer.scriptlets === undefined ||
+            filterer.selectors !== undefined ||
+            filterer.charset === undefined
+        ) {
+            return false;
+        }
+        // We need to insert after DOCTYPE, or else the browser may fall into
+        // quirks mode.
+        if ( responseBytes.byteLength < 256 ) { return false; }
+        var bb = new Uint8Array(responseBytes, 0, 256),
+            i = 0, b;
+        // Skip BOM if present.
+        if ( bb[0] === 0xEF && bb[1] === 0xBB && bb[2] === 0xBF ) { i += 3; }
+        // Scan for '<'
+        for (;;) {
+            b = bb[i++];
+            if ( b === 0x3C /* '<' */ ) { break; }
+            if ( b > 0x20 || i > 240 ) { return false; }
+        }
+        // Case insensitively test for '!doctype'.
+        if (
+              bb[i+0]          === 0x21 /* '!' */ &&
+            ( bb[i+1] | 0x20 ) === 0x64 /* 'd' */ &&
+            ( bb[i+2] | 0x20 ) === 0x6F /* 'o' */ &&
+            ( bb[i+3] | 0x20 ) === 0x63 /* 'c' */ &&
+            ( bb[i+4] | 0x20 ) === 0x74 /* 't' */ &&
+            ( bb[i+5] | 0x20 ) === 0x79 /* 'y' */ &&
+            ( bb[i+6] | 0x20 ) === 0x70 /* 'p' */ &&
+            ( bb[i+7] | 0x20 ) === 0x65 /* 'e' */
+        ) {
+            i += 8;
+        }
+        // Case insensitively test for 'html'.
+        else if (
+            ( bb[i+0] | 0x20 ) === 0x68 /* 'h' */ &&
+            ( bb[i+1] | 0x20 ) === 0x74 /* 't' */ &&
+            ( bb[i+2] | 0x20 ) === 0x6D /* 'm' */ &&
+            ( bb[i+3] | 0x20 ) === 0x6C /* 'l' */
+        ) {
+            i += 4;
+        } else {
+            return false;
+        }
+        // Scan for '>'.
+        var qcount = 0;
+        for (;;) {
+            b = bb[i++];
+            if ( b === 0x3E /* '>' */ ) { break; }
+            if ( b === 0x22 /* '"' */ || b === 0x27 /* "'" */ ) { qcount += 1; }
+            if ( b > 0x7F || i > 240 ) { return false; }
+        }
+        // Bail out if mismatched quotes.
+        if ( (qcount & 1) !== 0 ) { return false; }
+        // We found a valid insertion point.
+        if ( textEncoder === undefined ) { textEncoder = new TextEncoder(); }
+        filterer.stream.write(new Uint8Array(responseBytes, 0, i));
+        filterer.stream.write(
+            textEncoder.encode('<script>' + filterer.scriptlets + '</script>')
+        );
+        filterer.stream.write(new Uint8Array(responseBytes, i));
+        return true;
+    };
+
+    var streamClose = function(filterer, buffer) {
+        if ( buffer !== undefined ) {
+            filterer.stream.write(buffer);
+        } else if ( filterer.buffer !== undefined ) {
+            filterer.stream.write(filterer.buffer);
+        }
+        filterer.stream.close();
+    };
+
+    var onStreamData = function(ev) {
+        var filterer = filterers.get(this);
+        if ( filterer === undefined ) {
+            this.write(ev.data);
+            this.disconnect();
+            return;
+        }
+        if (
+            this.status !== 'transferringdata' &&
+            this.status !== 'finishedtransferringdata'
+        ) {
+            filterers.delete(this);
+            this.disconnect();
+            return;
+        }
+        // TODO:
+        // - Possibly improve buffer growth, if benchmarking shows it's worth
+        //   it.
+        // - Also evaluate whether keeping a list of buffers and then decoding
+        //   them in sequence using TextDecoder's "stream" option is more
+        //   efficient. Can the data buffers be safely kept around for later
+        //   use?
+        // - Informal, quick benchmarks seem to show most of the overhead is
+        //   from calling TextDecoder.decode() and TextEncoder.encode(), and if
+        //   confirmed, there is nothing which can be done uBO-side to reduce
+        //   overhead.
+        if ( filterer.buffer === null ) {
+            if ( streamJobDone(filterer, ev.data) ) {
+                filterers.delete(this);
+                this.disconnect();
+                return;
+            }
+            filterer.buffer = new Uint8Array(ev.data);
+            return;
+        }
+        var buffer = new Uint8Array(
+            filterer.buffer.byteLength +
+            ev.data.byteLength
+        );
+        buffer.set(filterer.buffer);
+        buffer.set(new Uint8Array(ev.data), filterer.buffer.byteLength);
+        filterer.buffer = buffer;
+    };
+
+    var onStreamStop = function() {
+        var filterer = filterers.get(this);
+        filterers.delete(this);
+        if ( filterer === undefined || filterer.buffer === null ) {
+            this.close();
+            return;
+        }
+        if ( this.status !== 'finishedtransferringdata' ) { return; }
+
+        if ( domParser === undefined ) {
+            domParser = new DOMParser();
+            xmlSerializer = new XMLSerializer();
+        }
+        if ( textEncoder === undefined ) {
+            textEncoder = new TextEncoder();
+        }
+
+        var doc;
+
+        // If stream encoding is still unknnown, try to extract from document.
+        var charsetFound = filterer.charset,
+            charsetUsed = charsetFound;
+        if ( charsetFound === undefined ) {
+            if ( utf8TextDecoder === undefined ) {
+                utf8TextDecoder = new TextDecoder();
+            }
+            doc = domParser.parseFromString(
+                utf8TextDecoder.decode(filterer.buffer.slice(0, 1024)),
+                'text/html'
+            );
+            charsetFound = charsetFromDoc(doc);
+            charsetUsed = µb.textEncode.normalizeCharset(charsetFound);
+            if ( charsetUsed === undefined ) {
+                return streamClose(filterer);
+            }
+        }
+
+        doc = domParser.parseFromString(
+            textDecode(charsetUsed, filterer.buffer),
+            'text/html'
+        );
+
+        // https://github.com/gorhill/uBlock/issues/3507
+        //   In case of no explicit charset found, try to find one again, but
+        //   this time with the whole document parsed.
+        if ( charsetFound === undefined ) {
+            charsetFound = µb.textEncode.normalizeCharset(charsetFromDoc(doc));
+            if ( charsetFound !== charsetUsed ) {
+                if ( charsetFound === undefined ) {
+                    return streamClose(filterer);
+                }
+                charsetUsed = charsetFound;
+                doc = domParser.parseFromString(
+                    textDecode(charsetFound, filterer.buffer),
+                    'text/html'
+                );
+            }
+        }
+
+        var modified = false;
+        if ( filterer.selectors !== undefined ) {
+            if ( µb.htmlFilteringEngine.apply(doc, filterer) ) {
+                modified = true;
+            }
+        }
+        if ( filterer.scriptlets !== undefined ) {
+            if ( µb.scriptletFilteringEngine.apply(doc, filterer) ) {
+                modified = true;
+            }
+        }
+
+        if ( modified === false ) {
+            return streamClose(filterer);
+        }
+
+        // https://stackoverflow.com/questions/6088972/get-doctype-of-an-html-as-string-with-javascript/10162353#10162353
+        var doctypeStr = doc.doctype instanceof Object ?
+                xmlSerializer.serializeToString(doc.doctype) + '\n' :
+                '';
+
+        // https://github.com/gorhill/uBlock/issues/3391
+        var encodedStream = textEncoder.encode(
+            doctypeStr +
+            doc.documentElement.outerHTML
+        );
+        if ( charsetUsed !== 'utf-8' ) {
+            encodedStream = µb.textEncode.encode(
+                charsetUsed,
+                encodedStream
+            );
+        }
+
+        streamClose(filterer, encodedStream);
+    };
+
+    var onStreamError = function() {
+        filterers.delete(this);
+    };
+
+    return function(pageStore, details) {
+        // https://github.com/gorhill/uBlock/issues/3478
+        var statusCode = details.statusCode || 0;
+        if ( statusCode !== 0 && (statusCode < 200 || statusCode >= 300) ) {
+            return;
+        }
+
+        var hostname = µb.URI.hostnameFromURI(details.url);
+        if ( hostname === '' ) { return; }
+
+        var domain = µb.URI.domainFromHostname(hostname);
+
+        var request = {
+            stream: undefined,
+            tabId: details.tabId,
+            url: details.url,
+            hostname: hostname,
+            domain: domain,
+            entity: µb.URI.entityFromDomain(domain),
+            selectors: undefined,
+            scriptlets: undefined,
+            buffer: null,
+            charset: undefined
+        };
+
+        // https://github.com/gorhill/uBlock/issues/3526
+        // https://github.com/uBlockOrigin/uAssets/issues/1492
+        //   Two distinct issues, but both are arising as a result of
+        //   injecting scriptlets through stream filtering. So falling back
+        //   to "slow" scriplet injection for the time being. Stream filtering
+        //   (`##^`) should be used for when scriptlets are defeated by early
+        //   script tags on a page.
+        //
+        if ( µb.hiddenSettings.streamScriptInjectFilters ) {
+            request.selectors = µb.htmlFilteringEngine.retrieve(request);
+        }
+        request.scriptlets = µb.scriptletFilteringEngine.retrieve(request);
+
+        if (
+            request.selectors === undefined &&
+            request.scriptlets === undefined
+        ) {
+            return;
+        }
+
+        var headers = details.responseHeaders,
+            contentType = headerValueFromName('content-type', headers);
+        if ( contentType !== '' ) {
+            if ( reContentTypeDocument.test(contentType) === false ) { return; }
+            var charset = charsetFromContentType(contentType);
+            if ( charset !== undefined ) {
+                charset = µb.textEncode.normalizeCharset(charset);
+                if ( charset === undefined ) { return; }
+                request.charset = charset;
+            }
+        }
+        // https://bugzilla.mozilla.org/show_bug.cgi?id=1426789
+        if ( headerValueFromName('content-disposition', headers) ) { return; }
+
+        var stream = request.stream =
+            vAPI.net.webRequest.filterResponseData(details.requestId);
+        stream.ondata = onStreamData;
+        stream.onstop = onStreamStop;
+        stream.onerror = onStreamError;
+        filterers.set(stream, request);
+    };
+})();
 
 /******************************************************************************/
 
@@ -434,20 +929,17 @@ var injectCSP = function(pageStore, details) {
     if ( details.type !== 'main_frame' ) {
         context.pageHostname = context.pageDomain = context.requestHostname;
     }
+    context.requestURL = requestURL;
 
     // Start collecting policies >>>>>>>>
 
     // ======== built-in policies
 
+    var builtinDirectives = [];
+
     context.requestType = 'inline-script';
-    context.requestURL = requestURL;
-    if ( pageStore.filterRequestNoCache(context) === 1 ) {
-        cspSubsets[0] = "script-src 'unsafe-eval' * blob: data:";
-        // https://bugs.chromium.org/p/chromium/issues/detail?id=669086
-        // TODO: remove when most users are beyond Chromium v56
-        if ( vAPI.chromiumVersion < 57 ) {
-            cspSubsets[0] += '; frame-src *';
-        }
+    if ( pageStore.filterRequest(context) === 1 ) {
+        builtinDirectives.push("script-src 'unsafe-eval' * blob: data:");
     }
     if ( loggerEnabled === true ) {
         logger.writeOne(
@@ -459,6 +951,28 @@ var injectCSP = function(pageStore, details) {
             context.rootHostname,
             context.pageHostname
         );
+    }
+
+    // https://github.com/gorhill/uBlock/issues/1539
+    // - Use a CSP to also forbid inline fonts if remote fonts are blocked.
+    context.requestType = 'inline-font';
+    if ( pageStore.filterRequest(context) === 1 ) {
+        builtinDirectives.push('font-src *');
+        if ( loggerEnabled === true ) {
+            logger.writeOne(
+                tabId,
+                'net',
+                pageStore.logData,
+                'inline-font',
+                requestURL,
+                context.rootHostname,
+                context.pageHostname
+            );
+        }
+    }
+
+    if ( builtinDirectives.length !== 0 ) {
+        cspSubsets[0] = builtinDirectives.join('; ');
     }
 
     // ======== filter-based policies
@@ -603,6 +1117,11 @@ var headerIndexFromName = function(headerName, headers) {
     return -1;
 };
 
+var headerValueFromName = function(headerName, headers) {
+    var i = headerIndexFromName(headerName, headers);
+    return i !== -1 ? headers[i].value : '';
+};
+
 /******************************************************************************/
 
 vAPI.net.onBeforeRequest = {
@@ -612,6 +1131,10 @@ vAPI.net.onBeforeRequest = {
     ],
     extra: [ 'blocking' ],
     callback: onBeforeRequest
+};
+
+vAPI.net.onBeforeMaybeSpuriousCSPReport = {
+    callback: onBeforeMaybeSpuriousCSPReport
 };
 
 vAPI.net.onHeadersReceived = {

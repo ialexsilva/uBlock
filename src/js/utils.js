@@ -225,7 +225,9 @@
 /******************************************************************************/
 
 µBlock.CompiledLineWriter = function() {
-    this.output = [];
+    this.blockId = undefined;
+    this.block = undefined;
+    this.blocks = new Map();
     this.stringifier = JSON.stringify;
 };
 
@@ -235,46 +237,81 @@
 
 µBlock.CompiledLineWriter.prototype = {
     push: function(args) {
-        this.output[this.output.length] = this.stringifier(args);
+        this.block[this.block.length] = this.stringifier(args);
+    },
+    select: function(blockId) {
+        if ( blockId === this.blockId ) { return; }
+        this.blockId = blockId;
+        this.block = this.blocks.get(blockId);
+        if ( this.block === undefined ) {
+            this.blocks.set(blockId, (this.block = []));
+        }
     },
     toString: function() {
-        return this.output.join('\n');
+        var result = [];
+        for ( var entry of this.blocks ) {
+            if ( entry[1].length === 0 ) { continue; }
+            result.push(
+                '#block-start-' + entry[0],
+                entry[1].join('\n'),
+                '#block-end-' + entry[0]
+            );
+        }
+        return result.join('\n');
     }
 };
 
-µBlock.CompiledLineReader = function(raw) {
-    this.reset(raw);
+/******************************************************************************/
+
+µBlock.CompiledLineReader = function(raw, blockId) {
+    this.block = '';
+    this.len = 0;
+    this.offset = 0;
+    this.line = '';
     this.parser = JSON.parse;
+    this.blocks = new Map();
+    var reBlockStart = /^#block-start-(\d+)\n/gm,
+        match = reBlockStart.exec(raw),
+        beg, end;
+    while ( match !== null ) {
+        beg = match.index + match[0].length;
+        end = raw.indexOf('#block-end-' + match[1], beg);
+        this.blocks.set(parseInt(match[1], 10), raw.slice(beg, end));
+        reBlockStart.lastIndex = end;
+        match = reBlockStart.exec(raw);
+    }
+    if ( blockId !== undefined ) {
+        this.select(blockId);
+    }
 };
 
 µBlock.CompiledLineReader.prototype = {
-    reset: function(raw) {
-        this.input = raw;
-        this.len = raw.length;
-        this.offset = 0;
-        this.s = '';
-        return this;
-    },
     next: function() {
         if ( this.offset === this.len ) {
-            this.s = '';
+            this.line = '';
             return false;
         }
-        var pos = this.input.indexOf('\n', this.offset);
+        var pos = this.block.indexOf('\n', this.offset);
         if ( pos !== -1 ) {
-            this.s = this.input.slice(this.offset, pos);
+            this.line = this.block.slice(this.offset, pos);
             this.offset = pos + 1;
         } else {
-            this.s = this.input.slice(this.offset);
+            this.line = this.block.slice(this.offset);
             this.offset = this.len;
         }
         return true;
     },
+    select: function(blockId) {
+        this.block = this.blocks.get(blockId) || '';
+        this.len = this.block.length;
+        this.offset = 0;
+        return this;
+    },
     fingerprint: function() {
-        return this.s;
+        return this.line;
     },
     args: function() {
-        return this.parser(this.s);
+        return this.parser(this.line);
     }
 };
 
@@ -320,33 +357,15 @@
 
 /******************************************************************************/
 
-µBlock.mapToArray = typeof Array.from === 'function'
+µBlock.arrayFrom = typeof Array.from === 'function'
     ? Array.from
-    : function(map) {
-        var out = [];
-        for ( var entry of map ) {
-            out.push(entry);
+    : function(iterable) {
+        var out = [], i = 0;
+        for ( var value of iterable ) {
+            out[i++] = value;
         }
         return out;
     };
-
-µBlock.mapFromArray = function(arr) {
-    return new Map(arr);
-};
-
-µBlock.setToArray = typeof Array.from === 'function'
-    ? Array.from
-    : function(dict) {
-        var out = [];
-        for ( var value of dict ) {
-            out.push(value);
-        }
-        return out;
-    };
-
-µBlock.setFromArray = function(arr) {
-    return new Set(arr);
-};
 
 /******************************************************************************/
 
@@ -365,14 +384,53 @@
 
 /******************************************************************************/
 
-// https://github.com/gorhill/uBlock/issues/2344
+µBlock.MRUCache = function(size) {
+    this.size = size;
+    this.array = [];
+    this.map = new Map();
+    this.resetTime = Date.now();
+};
 
-µBlock.matchCurrentLanguage = function(s) {
-    if ( typeof s !== 'string' ) { return false; }
-    if ( this.matchCurrentLanguage.reLang === undefined ) {
-        this.matchCurrentLanguage.reLang = new RegExp('\\b' + self.navigator.language.slice(0, 2) + '\\b');
+µBlock.MRUCache.prototype = {
+    add: function(key, value) {
+        var found = this.map.has(key);
+        this.map.set(key, value);
+        if ( !found ) {
+            if ( this.array.length === this.size ) {
+                this.map.delete(this.array.pop());
+            }
+            this.array.unshift(key);
+        }
+    },
+    remove: function(key) {
+        if ( this.map.has(key) ) {
+            this.array.splice(this.array.indexOf(key), 1);
+        }
+    },
+    lookup: function(key) {
+        var value = this.map.get(key);
+        if ( value !== undefined && this.array[0] !== key ) {
+            var i = this.array.indexOf(key);
+            do {
+                this.array[i] = this.array[i-1];
+            } while ( --i );
+            this.array[0] = key;
+        }
+        return value;
+    },
+    reset: function() {
+        this.array = [];
+        this.map.clear();
+        this.resetTime = Date.now();
     }
-    return this.matchCurrentLanguage.reLang.test(s);
+};
+
+/******************************************************************************/
+
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions
+
+µBlock.escapeRegex = function(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 };
 
 /******************************************************************************/
