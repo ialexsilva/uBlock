@@ -104,7 +104,7 @@ Ser leve e eficiente não significa que está bloqueando menos<br>
 
 - [Index](http://raymondhill.net/ublock/tests.html)
 - [Componentes da página web](http://raymondhill.net/ublock/tiles1.html)
-- [Popups](http://raymondhill.net/ublock/popup.html)
+- [Pop-ups](http://raymondhill.net/ublock/popup.html)
 - [Páginas de teste ABP](https://testpages.adblockplus.org/)
 
 ## Instalação
@@ -113,16 +113,16 @@ Sinta-se livre para ler [sobre as permissões necessárias para instalação da 
 
 #### Chromium
 
-Você pode instalar a ultima versão [manualmente](https://github.com/gorhill/uBlock/tree/master/dist#install), da [Chrome Store](https://chrome.google.com/webstore/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm), ou pela [Opera Store](https://addons.opera.com/en-gb/extensions/details/ublock/).
+Você pode instalar a ultima versão [manualmente](https://github.com/gorhill/uBlock/tree/master/dist#install), da [Chrome Web Store](https://chrome.google.com/webstore/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm), ou pela [Opera add-ons](https://addons.opera.com/en-gb/extensions/details/ublock/).
 
-Também temos uma versão de desenvolvimento disponível na Chrome store, caso você queira testar o uBlock Origin com as últimas alterações: visite [_uBlock Origin dev build_](https://chrome.google.com/webstore/detail/ublock-origin-dev-build/cgbcahbpdhpcegmbfconppldiemgcoii).
+Também temos uma versão de desenvolvimento disponível na Chrome Web Store, caso você queira testar o uBlock Origin com as últimas alterações: visite [_uBlock Origin dev build_](https://chrome.google.com/webstore/detail/ublock-origin-dev-build/cgbcahbpdhpcegmbfconppldiemgcoii).
 
 O esperado é que uBlock Origin seja compatível com todos os navegadores baseados no Chromium.
 
 #### Firefox / Firefox para Android
 
 [Site de Extensões para o Firefox](https://addons.mozilla.org/addon/ublock-origin/). Há também uma versão de desenvolvimento, caso você queira testar a versão beta do uBlock Origin: visite a página de [Instalar / Firefox webext / Na versão beta](https://github.com/gorhill/uBlock/blob/master/dist/README.md#for-beta-version)
-uBlock Origin é compatível com [SeaMonkey](http://www.seamonkey-project.org/), [Pale Moon](https://www.palemoon.org/), e possivelmente outros navegadores baseados no Firefox, para instalar, visite [Instalar / Firefox legacy](https://github.com/gorhill/uBlock/blob/master/dist/README.md#firefox-legacy).
+uBlock Origin é compatível com [SeaMonkey](http://www.seamonkey-project.org/), [Pale Moon](https://www.palemoon.org/) e possivelmente outros navegadores baseados no Firefox. Para instalar, visite [Instalar / Firefox legacy](https://github.com/gorhill/uBlock/blob/master/dist/README.md#firefox-legacy).
 
 Agradecimentos ao colaborador do Debian [Sean Whitton](https://wiki.debian.org/SeanWhitton), os usuários do Debian 9 ou posterior ou Ubuntu 16.04 ou posterior pode simplesmente instalar usando o seguinte comando no terminal.
 `apt-get install xul-ext-ublock-origin`.
