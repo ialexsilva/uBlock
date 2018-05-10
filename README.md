@@ -56,15 +56,15 @@ uBlock Origin
 
 ## Finalidade
 
-uBlock Origin (ou uBlock₀) não é apenas um *bloqueador de anúncios*; é um bloqueador de uso geral. O uBlock₀ bloqueia anúncios através da [sintaxe de filtro do Adblock Plus](https://adblockplus.org/en/filters). uBlock₀ [estende](https://github.com/gorhill/uBlock/wiki/Filter-syntax-extensions) a sintaxe que é projetada para funcionar com regras e filtros personalizados. Além disso, o modo usuário avançado permite uBlock₀ funcionar em [modo bloquear-padrão](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-default-deny), modo que irá fazer [todos pedidos de rede de terceiros](https://requestpolicycontinued.github.io/#what-are-cross-site-requests) serem bloqueados por padrão, a menos que seja permitido pelo usuário.
+uBlock Origin (ou uBlock₀) não é apenas um *bloqueador de anúncios*; é um bloqueador de uso geral. O uBlock Origin bloqueia anúncios através da [sintaxe de filtro do Adblock Plus](https://adblockplus.org/en/filters). uBlock Origin [estende](https://github.com/gorhill/uBlock/wiki/Filter-syntax-extensions) a sintaxe que é projetada para funcionar com regras e filtros personalizados. Além disso, o modo usuário avançado permite o uBlock Origin funcionar no [modo bloquear-por-padrão](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-default-deny), modo que irá fazer [todos pedidos de rede de terceiros](https://requestpolicycontinued.github.io/#what-are-cross-site-requests) serem bloqueados por padrão, a menos que seja permitido pelo usuário.
 
 Dito isto, é importante notar que o uso de um bloqueador **NÃO** é [roubar](https://twitter.com/LeaVerou/status/518154828166725632). Não caia nessa idéia. A consequência lógica _final_ de que `bloquear = roubar` é a criminalização do direito inalienável a privacidade.
 
-Anúncios, "invasivos" ou não, são apenas as partes visíveis dos mecanismos de invasão a privacidade entrando no seu navegador quando você visita a maioria dos sites hoje em dia. **O principal objetivo do uBlock₀'s é ajudar os usuários a neutralizar tais mecanismos de invasão a privacidade** — de uma forma que acolhe aqueles usuários que não queiram o uso mais avançado envolvido (como [µMatrix](https://github.com/gorhill/uMatrix)).
+Anúncios, "invasivos" ou não, são apenas as partes visíveis dos mecanismos de invasão a privacidade entrando no seu navegador quando você visita a maioria dos sites hoje em dia. **O principal objetivo do uBlock Origin's é ajudar os usuários a neutralizar tais mecanismos de invasão a privacidade** — de uma forma que acolhe aqueles usuários que não queiram o uso mais avançado(como [µMatrix](https://github.com/gorhill/uMatrix)).
 
 _EasyList_, _Peter Lowe's Adservers_, _EasyPrivacy_ e _Malware domains_ são ativadas por padrão quando você instala o uBlock Origin. Muitas outras listas estão disponíveis para bloquear rastreadores, sistemas analíticos e muito mais. Arquivos de hosts também são suportados.
 
-Depois de instalar o uBlock₀, você pode facilmente desmarcar qualquer uma das listas pre-selecionadas por padrão, se você acredita que o uBlock₀ está bloqueando muito. Para referência, o Adblock Plus instala somente a lista _EasyList_ por padrão.
+Depois de instalar o uBlock Origin, você pode facilmente desmarcar qualquer uma das listas pre-selecionadas por padrão, se você acredita que o uBlock Origin está bloqueando muito. Para referência, o Adblock Plus instala somente a lista _EasyList_ por padrão.
 
 ## Desempenho
 
@@ -86,7 +86,7 @@ Firefox<br>
 #### CPU
 
 <p align="center">
-uBlock₀ também usa poucos recursos de CPU<br>
+uBlock Origin também usa poucos recursos de CPU<br>
 <img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/benchmarks/cpu-usage-overall-chart-20141226.png" /><br>
 <sup>Detalhes do benchmark disponível <a href="https://github.com/gorhill/uBlock/blob/master/doc/benchmarks/cpu-usage-overall-20141226.ods">nesta planilha do LibreOffice</a>.</sup>
 </p>
@@ -97,7 +97,7 @@ uBlock₀ também usa poucos recursos de CPU<br>
 Ser leve e eficiente não significa que está bloqueando menos<br>
 <img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/benchmarks/privex-201502-16.png" /><br>
 <sup>Para detalhes do benchmark, veja 
-<a href="https://github.com/gorhill/uBlock/wiki/uBlock-and-others%3A-Blocking-ads%2C-trackers%2C-malwares">uBlock₀ e outros: Bloqueadores de anúncios, rastreadores, malwares</a>.
+<a href="https://github.com/gorhill/uBlock/wiki/uBlock-and-others%3A-Blocking-ads%2C-trackers%2C-malwares">uBlock Origin e outros: Bloqueadores de anúncios, rastreadores, malwares</a>.
 </p>
 
 #### Outros Testes
@@ -147,7 +147,7 @@ Observe que os problemas específicos do fork do Safari são de responsabilidade
 
 #### Nota para usuários de todos navegadores
 
-Para beneficiar da eficiência mais elevada do uBlock Origin's, é aconselhavel que você não use outros bloqueadores ao mesmo tempo (como o AdBlock ou Adblock Plus). uBlock₀ vai funcionar [tão bem ou melhor](#blocking) do que a maioria dos bloqueadores de anúncios populares.
+Para beneficiar da eficiência mais elevada do uBlock Origin's, é aconselhavel que você não use outros bloqueadores ao mesmo tempo (como o AdBlock ou Adblock Plus). uBlock Origin vai funcionar [tão bem ou melhor](#blocking) do que a maioria dos bloqueadores de anúncios populares.
 
 ## Histórico de Lançamentos
 
