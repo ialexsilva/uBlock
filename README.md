@@ -109,7 +109,7 @@ Ser leve e eficiente não significa que está bloqueando menos<br>
 
 ## Instalação
 
-Sinta-se livre para ler [sobre as permissões necessárias para instalação da extensão] em (https://github.com/gorhill/uBlock/wiki/About-the-required-permissions).
+Sinta-se livre para ler [sobre as permissões necessárias para instalação da extensão](https://github.com/gorhill/uBlock/wiki/About-the-required-permissions).
 
 #### Chromium
 
