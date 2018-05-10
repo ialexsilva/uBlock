@@ -113,36 +113,37 @@ Sinta-se livre para ler [sobre as permissões necessárias para instalação da 
 
 #### Chromium
 
-Você pode instalar a ultima versão [manualmente] em (https://github.com/gorhill/uBlock/tree/master/dist#install), ou da [Chrome Store](https://chrome.google.com/webstore/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm), e pela [Opera store](https://addons.opera.com/en-gb/extensions/details/ublock/).
+Você pode instalar a ultima versão [manualmente](https://github.com/gorhill/uBlock/tree/master/dist#install), ou da [Chrome Store](https://chrome.google.com/webstore/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm), e pela [Opera store](https://addons.opera.com/en-gb/extensions/details/ublock/).
+
+Também temos uma versão de desenvolvimento disponível na Chrome store, caso você queira testar o uBlock Origin com as últimas alterações: visite [_uBlock Origin dev build_](https://chrome.google.com/webstore/detail/ublock-origin-dev-build/cgbcahbpdhpcegmbfconppldiemgcoii).
 
 O esperado é que uBlock Origin seja compatível com todos os navegadores baseados no Chromium.
 
-**Importante:** Navegadores baseados no Chromium não retransmite [conexões websocket](https://en.wikipedia.org/wiki/WebSocket) Isso pode ser corrigido através da instalação da extensão adicional do uBO. [uBO-WebSocket](https://github.com/gorhill/uBO-WebSocket).
-
 #### Firefox / Firefox para Android
 
-[Site de Complementos do Firefox](https://addons.mozilla.org/addon/ublock-origin/). Há também uma versão de desenvolvimento, se você quiser testar uBlock Origin com as últimas alterações: visite a página de [_Histórico de versões do uBlock Origin_](https://addons.mozilla.org/addon/ublock-origin/versions/beta)
+[Site de Extensões para o Firefox](https://addons.mozilla.org/addon/ublock-origin/). Há também uma versão de desenvolvimento, caso você queira testar a versão beta do uBlock Origin: visite a página de [Instalar / Firefox webext / Na versão beta](https://github.com/gorhill/uBlock/blob/master/dist/README.md#for-beta-version)
+uBlock Origin é compatível com [SeaMonkey](http://www.seamonkey-project.org/), [Pale Moon](https://www.palemoon.org/), e possivelmente outros navegadores baseados no Firefox, para instalar, visite [Instalar / Firefox legacy](https://github.com/gorhill/uBlock/blob/master/dist/README.md#firefox-legacy).
 
-uBlock Origin é compatível com [SeaMonkey](http://www.seamonkey-project.org/), [Pale Moon](https://www.palemoon.org/), e possivelmente outros navegadores baseados no Firefox.
-
-A versão do uBlock Origin para o Firefox tem [uma funcionalidade extra](https://github.com/gorhill/uBlock/wiki/Inline-script-tag-filtering) atualmente ainda não está disponível para os navegadores baseados no Chromium -- que apresenta uma grande ajuda para frustrar as tentativas de muitos sites de contornar os bloqueadores.
-
-Também de interesse: [Implantando o uBlock Origin para o Firefox com CCK2 e diretiva de grupo.](http://decentsecurity.com/ublock-for-firefox-deployment/).
-
-##### Debian/Ubuntu
-
-Agradecimentos ao colaborador do Debian [Sean Whitton](https://wiki.debian.org/SeanWhitton), os usuários do Debian 9 ou posterior ou Ubuntu 16.04 ou posterior pode simplesmente instalar usando
+Agradecimentos ao colaborador do Debian [Sean Whitton](https://wiki.debian.org/SeanWhitton), os usuários do Debian 9 ou posterior ou Ubuntu 16.04 ou posterior pode simplesmente instalar usando o seguinte comando no terminal.
 `apt-get install xul-ext-ublock-origin`.
 
 #### Microsoft Edge
 
-Versão em desenvolvimento por [@nikrolls](https://github.com/nikrolls): <https://github.com/nikrolls/uBlock-Edge#edge>.
+Desenvolvedor [@nikrolls](https://github.com/nikrolls)
+
+Versão estável disponível na [Microsoft Store](https://www.microsoft.com/store/p/app/9nblggh444l4).
+
+Versão de desenvolvimento disponível em <https://github.com/nikrolls/uBlock-Edge#edge>.
+
+Observe que os problemas específicos do fork do Edge são de responsabilidade do desenvolvedor atual; não tenho controle sobre o código base do fork.
 
 #### Safari (macOS)
 
 Desenvolvedor: [@el1t](https://github.com/el1t).
 
 Versão de desenvolvimento disponível em <https://github.com/el1t/uBlock-Safari#ublock-originfor-safari>.
+
+Observe que os problemas específicos do fork do Safari são de responsabilidade do desenvolvedor atual; não tenho controle sobre o código base do fork.
 
 #### Nota para usuários de todos navegadores
 
@@ -162,8 +163,6 @@ Sem as listas predefinidas de filtros, esta extensão não é nada.
 Por isso, se você nunca contribuiu com alguma coisa, pense nas pessoas que trabalham duro
 para manter as listas de filtro que você está usando, que foram disponibilizadas para usar
 tudo de graça.
-
-Você pode contribuir ajudando a traduzir uBlock₀ [no Crowdin] (https://crowdin.net/project/ublock).
 
 ## Licença
 
