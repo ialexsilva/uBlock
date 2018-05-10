@@ -129,7 +129,7 @@ Agradecimentos ao colaborador do Debian [Sean Whitton](https://wiki.debian.org/S
 
 #### Microsoft Edge
 
-Desenvolvedor [@nikrolls](https://github.com/nikrolls)
+Desenvolvedor [@nikrolls](https://github.com/nikrolls).
 
 Versão estável disponível na [Microsoft Store](https://www.microsoft.com/store/p/app/9nblggh444l4).
 
@@ -151,7 +151,7 @@ Para beneficiar da eficiência mais elevada do uBlock Origin's, é aconselhavel 
 
 ## Histórico de Lançamentos
 
-Visite a [página de lançamentos] em (https://github.com/gorhill/uBlock/releases) para ver o registro de alterações e os destaques de cada lançamento.
+Visite a [página de lançamentos](https://github.com/gorhill/uBlock/releases) para ver o registro de alterações e os destaques de cada lançamento.
 
 ## Sobre
 
