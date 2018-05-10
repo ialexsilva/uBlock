@@ -44,7 +44,7 @@ uBlock Origin
   * [Microsoft Edge](#microsoft-edge)
   - [Safari (macOS)](#safari-macos)
 * [Histórico de Lançamentos](#histórico-de-lançamentos)
-* [Política de Privacidade](https://github.com/gorhill/uBlock/wiki/Privacy-policy)
+* [Política de Privacidade](https://github.com/ialexsilva/uBlock/wiki/Pol%C3%ADtica-de-Privacidade)
 * [Wiki](https://github.com/gorhill/uBlock/wiki)
 
 ## Documentação
