@@ -113,7 +113,7 @@ Sinta-se livre para ler [sobre as permissões necessárias para instalação da 
 
 #### Chromium
 
-Você pode instalar a ultima versão [manualmente](https://github.com/gorhill/uBlock/tree/master/dist#install), da [Chrome Store](https://chrome.google.com/webstore/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm), ou pela [Opera store](https://addons.opera.com/en-gb/extensions/details/ublock/).
+Você pode instalar a ultima versão [manualmente](https://github.com/gorhill/uBlock/tree/master/dist#install), da [Chrome Store](https://chrome.google.com/webstore/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm), ou pela [Opera Store](https://addons.opera.com/en-gb/extensions/details/ublock/).
 
 Também temos uma versão de desenvolvimento disponível na Chrome store, caso você queira testar o uBlock Origin com as últimas alterações: visite [_uBlock Origin dev build_](https://chrome.google.com/webstore/detail/ublock-origin-dev-build/cgbcahbpdhpcegmbfconppldiemgcoii).
 
