@@ -45,7 +45,7 @@ uBlock Origin
   - [Safari (macOS)](#safari-macos)
 * [Histórico de Lançamentos](#histórico-de-lançamentos)
 * [Política de Privacidade](https://github.com/ialexsilva/uBlock/wiki/Pol%C3%ADtica-de-Privacidade)
-* [Wiki](https://github.com/gorhill/uBlock/wiki)
+* [Wiki](https://github.com/ialexsilva/uBlock/wiki)
 
 ## Documentação
 
@@ -62,16 +62,16 @@ Dito isto, é importante notar que o uso de um bloqueador **NÃO** é [roubar](h
 
 Anúncios, "invasivos" ou não, são apenas as partes visíveis dos mecanismos de invasão a privacidade entrando no seu navegador quando você visita a maioria dos sites hoje em dia. **O principal objetivo do uBlock Origin's é ajudar os usuários a neutralizar tais mecanismos de invasão a privacidade** — de uma forma que acolhe aqueles usuários que não queiram o uso mais avançado(como [µMatrix](https://github.com/gorhill/uMatrix)).
 
-_EasyList_, _Peter Lowe's Adservers_, _EasyPrivacy_ e _Malware domains_ são ativadas por padrão quando você instala o uBlock Origin. Muitas outras listas estão disponíveis para bloquear rastreadores, sistemas analíticos e muito mais. Arquivos de hosts também são suportados.
+_EasyList_, _Peter Lowe's Adservers_, _EasyPrivacy_ e _Malware domains_ são carregadas por padrão quando você instala o uBlock Origin. Muitas outras listas estão disponíveis para bloquear rastreadores, sistemas analíticos e muito mais. Arquivos de hosts também são suportados.
 
-Depois de instalar o uBlock Origin, você pode facilmente desmarcar qualquer uma das listas pre-selecionadas por padrão, se você acredita que o uBlock Origin está bloqueando muito. Para referência, o Adblock Plus instala somente a lista _EasyList_ por padrão.
+Depois de instalar o uBlock Origin, você pode facilmente desmarcar qualquer uma das listas ativadas por padrão, se você acredita que o uBlock Origin está bloqueando muito. Para referência, o Adblock Plus instala somente a lista _EasyList_ por padrão.
 
 ## Desempenho
 
 #### Memória
 
 <div align="center">
-Em média, uBlock Origin faz com que seu navegador fique mais leve <sup>[1]</sup><br><br>
+Em média, o uBlock Origin faz com que seu navegador fique mais leve <sup>[1]</sup><br><br>
 
 Chromium<br>
 <img src="https://cloud.githubusercontent.com/assets/585534/10074141/15f04128-629c-11e5-9155-177fd4909083.png" /><br><br>
@@ -167,7 +167,7 @@ Visite a [página de lançamentos](https://github.com/gorhill/uBlock/releases) p
 
 Gratuito e de código aberto. Feito de usuários para usuários. Não aceitamos doações.
 
-Sem as listas predefinidas de filtros, esta extensão não é nada. 
+Sem as listas de filtros selecionadas por padrão, esta extensão não é nada. 
 Por isso, se você nunca contribuiu com alguma coisa, pense nas pessoas que trabalham duro
 para manter as listas de filtro que você está usando, que foram disponibilizadas para usar, tudo de graça.
 
