@@ -51,8 +51,12 @@ uBlock Origin
 
  Modo básico | Modo usuário avançado
 :----------:|:------------------:
-[Interface de usuário](https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface) | [Tem um firewall aponte e clique que pode ser configurado por site](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide) 
+[Interface de usuário](https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface) | [Tem um firewall que pode ser configurado por site](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide) 
 <a href="https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface"><img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/img/popup-1.png" /></a><br><sup>.<br>.</sup> | <a href="https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide"><img src="https://cloud.githubusercontent.com/assets/585534/9293685/378d18f0-4402-11e5-9255-8ed3fdbfa957.png" /></a><br><sup>Configure como quiser:<br>a imagem mostra scripts de terceiros e frames bloqueados por padrão</sup>
+
+Para ver a documentação visite [wiki do uBlock Origin](https://github.com/gorhill/uBlock/wiki).
+
+Para suporte/perguntas/ajuda, temos o [/r/uBlockOrigin](https://github.com/ialexsilva/uBlock/wiki) no Reddit (Inglês).
 
 ## Finalidade
 
@@ -60,7 +64,7 @@ uBlock Origin (ou uBlock₀) não é apenas um *bloqueador de anúncios*; é um 
 
 Dito isto, é importante notar que o uso de um bloqueador **NÃO** é [roubar](https://twitter.com/LeaVerou/status/518154828166725632). Não caia nessa idéia. A consequência lógica _final_ de que `bloquear = roubar` é a criminalização do direito inalienável a privacidade.
 
-Anúncios, "invasivos" ou não, são apenas as partes visíveis dos mecanismos de invasão a privacidade entrando no seu navegador quando você visita a maioria dos sites hoje em dia. **O principal objetivo do uBlock Origin's é ajudar os usuários a neutralizar tais mecanismos de invasão a privacidade** — de uma forma que acolhe aqueles usuários que não queiram o uso mais avançado(como [µMatrix](https://github.com/gorhill/uMatrix)).
+Anúncios, "invasivos" ou não, são apenas as partes visíveis dos mecanismos de invasão a privacidade entrando no seu navegador quando você visita a maioria dos sites hoje em dia. **O principal objetivo do uBlock Origin é ajudar os usuários a neutralizar tais mecanismos de invasão a privacidade** — de uma forma que acolhe aqueles usuários que não queiram o uso mais avançado(como [µMatrix](https://github.com/gorhill/uMatrix)).
 
 _EasyList_, _Peter Lowe's Adservers_, _EasyPrivacy_ e _Malware domains_ são carregadas por padrão quando você instala o uBlock Origin. Muitas outras listas estão disponíveis para bloquear rastreadores, sistemas analíticos e muito mais. Arquivos de hosts também são suportados.
 
@@ -147,7 +151,7 @@ Observe que os problemas específicos do fork do Safari são de responsabilidade
 
 #### Nota para usuários de todos navegadores
 
-Para maior eficiência do uBlock Origin's, é aconselhavel que você não use outros bloqueadores ao mesmo tempo (como o AdBlock ou Adblock Plus). uBlock Origin vai funcionar [tão bem ou melhor](#blocking) do que a maioria dos bloqueadores de anúncios populares. Outros bloqueadores também podem impedir que os recursos de privacidade ou anti-bloqueio do uBlock Origin's funcionem corretamente.
+Para maior eficiência do uBlock Origin, é aconselhavel que você não use outros bloqueadores ao mesmo tempo (como o AdBlock ou Adblock Plus). uBlock Origin vai funcionar [tão bem ou melhor](#blocking) do que a maioria dos bloqueadores de anúncios populares. Outros bloqueadores também podem impedir que os recursos de privacidade ou anti-bloqueio do uBlock Origin funcionem corretamente.
 
 #### Implantando
 
@@ -163,7 +167,7 @@ Visite a [página de lançamentos](https://github.com/gorhill/uBlock/releases) p
 
 ## Sobre
 
-[Manifesto do uBlock Origin's](MANIFESTO.md).
+[Manifesto do uBlock Origin](MANIFESTO.md).
 
 Gratuito e de código aberto. Feito de usuários para usuários. Não aceitamos doações.
 
