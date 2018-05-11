@@ -58,7 +58,7 @@ uBlock Origin
 [Interface de usuário](https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface) | [Tem um firewall que pode ser configurado por site](https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide) 
 <a href="https://github.com/gorhill/uBlock/wiki/Quick-guide:-popup-user-interface"><img src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/img/popup-1.png" /></a><br><sup>.<br>.</sup> | <a href="https://github.com/gorhill/uBlock/wiki/Dynamic-filtering:-quick-guide"><img src="https://cloud.githubusercontent.com/assets/585534/9293685/378d18f0-4402-11e5-9255-8ed3fdbfa957.png" /></a><br><sup>Configure como quiser:<br>a imagem mostra scripts de terceiros e frames bloqueados por padrão</sup>
 
-Para ver a documentação visite [wiki do uBlock Origin](https://github.com/gorhill/uBlock/wiki).
+Para ver a documentação visite [wiki do uBlock Origin](https://github.com/ialexsilva/uBlock/wiki).
 
 Para suporte/perguntas/ajuda, temos o [/r/uBlockOrigin](https://github.com/ialexsilva/uBlock/wiki) no Reddit (Inglês).
 
