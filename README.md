@@ -147,7 +147,15 @@ Observe que os problemas específicos do fork do Safari são de responsabilidade
 
 #### Nota para usuários de todos navegadores
 
-Para beneficiar da eficiência mais elevada do uBlock Origin's, é aconselhavel que você não use outros bloqueadores ao mesmo tempo (como o AdBlock ou Adblock Plus). uBlock Origin vai funcionar [tão bem ou melhor](#blocking) do que a maioria dos bloqueadores de anúncios populares.
+Para maior eficiência do uBlock Origin's, é aconselhavel que você não use outros bloqueadores ao mesmo tempo (como o AdBlock ou Adblock Plus). uBlock Origin vai funcionar [tão bem ou melhor](#blocking) do que a maioria dos bloqueadores de anúncios populares. Outros bloqueadores também podem impedir que os recursos de privacidade ou anti-bloqueio do uBlock Origin's funcionem corretamente.
+
+#### Implantando
+
+Abaixo está a documentação para ajudar os administradores na área de TI a implantar o uBlock Origin:
+
+- [Implantando o uBlock Origin](https://github.com/gorhill/uBlock/wiki/Deploying-uBlock-Origin)
+    - Firefox: [Implantando o uBlock Origin para Firefox com CCK2 e Política de Grupo](http://decentsecurity.com/ublock-for-firefox-deployment/) (link externo em inglês)
+    - Google Chrome: [Gerenciando o Google Chrome com bloqueio de anúncios e segurança](https://decentsecurity.com/ublock-for-google-chrome-deployment/) (link externo em inglês) 
 
 ## Histórico de Lançamentos
 
@@ -161,8 +169,7 @@ Gratuito e de código aberto. Feito de usuários para usuários. Não aceitamos 
 
 Sem as listas predefinidas de filtros, esta extensão não é nada. 
 Por isso, se você nunca contribuiu com alguma coisa, pense nas pessoas que trabalham duro
-para manter as listas de filtro que você está usando, que foram disponibilizadas para usar
-tudo de graça.
+para manter as listas de filtro que você está usando, que foram disponibilizadas para usar, tudo de graça.
 
 ## Licença
 
