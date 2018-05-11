@@ -3,6 +3,7 @@
 [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/gorhill/uBlock/blob/master/LICENSE.txt)
 
 ***
+
 <h1 align="center">
 <sub>
 <img  src="https://raw.githubusercontent.com/gorhill/uBlock/master/doc/img/icon38@2x.png"
@@ -26,9 +27,12 @@ uBlock Origin
             Português (Brasil)
       </sup>
 </sup>
+<br>
+<br>
+<sup><a href="https://github.com/gorhill/uBlock/wiki/uBlock-Origin-is-completely-unrelated-to-the-web-site-ublock.org"><b>CUIDADO!</b> O uBlock Origin é (e sempre será) não relacionado ao site <code>ublock.org</code></a>.</sup>
 </p>
 
-
+***
 **Um bloqueador eficiente para varios navegadores. Rápido e leve.**
 
 * [Documentação](#documentação)
