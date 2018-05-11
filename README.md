@@ -35,6 +35,8 @@ uBlock Origin
 
 **Um bloqueador eficiente para varios navegadores. Rápido e leve.**
 
+O uBlock Origin **NÃO** é apenas um "bloqueador de anúncios": [é um bloqueador de amplo espectro](https://github.com/gorhill/uBlock/wiki/Blocking-mode). O comportamento padrão do uBlock Origin quando instalado é bloquear anúncios, rastreadores e sites de malware -- através de várias listas de filtros como [_EasyList_](https://easylist.github.io/#easylist), [_EasyPrivacy_](https://easylist.github.io/#easyprivacy), [_Peter Lowe’s ad/tracking/malware servers_](https://pgl.yoyo.org/adservers/policy.php), [sites](http://www.malwaredomainlist.com/) de [malware](http://www.malwaredomains.com/) e as [próprias listas de filtros](https://github.com/uBlockOrigin/uAssets/tree/master/filters) do uBlock Origin.
+
 * [Documentação](#documentação)
 * [Finalidade & Informações Gerais](#finalidade)
 * [Desempenho e Eficiência](#desempenho)
