@@ -35,7 +35,7 @@ uBlock Origin
 
 **Um bloqueador eficiente para varios navegadores. Rápido e leve.**
 
-O uBlock Origin **NÃO** é apenas um "bloqueador de anúncios": [é um bloqueador de amplo espectro](https://github.com/gorhill/uBlock/wiki/Blocking-mode). O comportamento padrão do uBlock Origin quando instalado é bloquear anúncios, rastreadores e sites de malware -- através de várias listas de filtros como [_EasyList_](https://easylist.github.io/#easylist), [_EasyPrivacy_](https://easylist.github.io/#easyprivacy), [_Peter Lowe’s ad/tracking/malware servers_](https://pgl.yoyo.org/adservers/policy.php), [sites](http://www.malwaredomainlist.com/) de [malware](http://www.malwaredomains.com/) e as [próprias listas de filtros](https://github.com/uBlockOrigin/uAssets/tree/master/filters) do uBlock Origin.
+O uBlock Origin **NÃO** é apenas um "bloqueador de anúncios": [é um bloqueador de amplo espectro](https://github.com/ialexsilva/uBlock/wiki/Modo-de-bloqueio). O comportamento padrão do uBlock Origin quando instalado é bloquear anúncios, rastreadores e sites de malware -- através de várias listas de filtros como [_EasyList_](https://easylist.github.io/#easylist), [_EasyPrivacy_](https://easylist.github.io/#easyprivacy), [_Peter Lowe’s ad/tracking/malware servers_](https://pgl.yoyo.org/adservers/policy.php), [sites](http://www.malwaredomainlist.com/) de [malware](http://www.malwaredomains.com/) e as [próprias listas de filtros](https://github.com/uBlockOrigin/uAssets/tree/master/filters) do uBlock Origin.
 
 * [Documentação](#documentação)
 * [Finalidade & Informações Gerais](#finalidade)
@@ -62,7 +62,7 @@ O uBlock Origin **NÃO** é apenas um "bloqueador de anúncios": [é um bloquead
 
 Para ver a documentação visite [wiki do uBlock Origin](https://github.com/ialexsilva/uBlock/wiki).
 
-Para suporte/perguntas/ajuda, temos o [/r/uBlockOrigin](https://github.com/ialexsilva/uBlock/wiki) no Reddit (Inglês).
+Para suporte/perguntas/ajuda, temos o [/r/uBlockOrigin](https://www.reddit.com/r/uBlockOrigin/) no Reddit (Inglês).
 
 ## Finalidade
 
@@ -113,7 +113,7 @@ Ser leve e eficiente não significa que está bloqueando menos<br>
 #### Outros Testes
 
 - [Index](http://raymondhill.net/ublock/tests.html)
-- [Componentes da página web](http://raymondhill.net/ublock/tiles1.html)
+- [Componentes da página](http://raymondhill.net/ublock/tiles1.html)
 - [Pop-ups](http://raymondhill.net/ublock/popup.html)
 - [Páginas de teste ABP](https://testpages.adblockplus.org/)
 
