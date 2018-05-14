@@ -91,7 +91,7 @@ Firefox<br>
 
 </div>
 
-<sup>[1] Detalhes do benchmark disponível em <a href="https://github.com/gorhill/uBlock/wiki/Firefox-version:-benchmarking-memory-footprint">versão do Firefox: benchmarking consumo de memória</a>.</sup><br>
+<sup>[1] Detalhes do benchmark disponível no link <a href="https://github.com/gorhill/uBlock/wiki/Firefox-version:-benchmarking-memory-footprint">Firefox: benchmark do consumo de memória</a>.</sup><br>
 
 #### CPU
 
