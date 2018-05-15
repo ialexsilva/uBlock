@@ -179,7 +179,7 @@ Gratuito e de código aberto. Feito de usuários para usuários. Não aceitamos 
 
 Sem as listas de filtros selecionadas por padrão, esta extensão não é nada. 
 Por isso, se você nunca contribuiu com alguma coisa, pense nas pessoas que trabalham duro
-para manter as listas de filtro que você está usando, que foram disponibilizadas para usar, tudo de graça.
+para manter as listas de filtros que você está usando, que foram disponibilizadas para usar, tudo de graça.
 
 ## Licença
 
