@@ -70,7 +70,7 @@ uBlock Origin (ou uBlock₀) não é apenas um *bloqueador de anúncios*; é um 
 
 Dito isto, é importante notar que o uso de um bloqueador **NÃO** é [roubar](https://twitter.com/LeaVerou/status/518154828166725632). Não caia nessa idéia. A consequência lógica _final_ de que `bloquear = roubar` é a criminalização do direito inalienável a privacidade.
 
-Anúncios, "invasivos" ou não, são apenas as partes visíveis dos mecanismos de invasão a privacidade entrando no seu navegador quando você visita a maioria dos sites hoje em dia. **O principal objetivo do uBlock Origin é ajudar os usuários a neutralizar tais mecanismos de invasão de privacidade** — de uma forma que acolhe aqueles usuários que não queiram o uso mais avançado(como [µMatrix](https://github.com/gorhill/uMatrix)).
+Anúncios, "invasivos" ou não, são apenas as partes visíveis dos mecanismos de invasão a privacidade entrando no seu navegador quando você visita a maioria dos sites hoje em dia. **O principal objetivo do uBlock Origin é ajudar os usuários a neutralizar tais mecanismos de invasão de privacidade** — de uma forma que acolha os usuários que não queiram o uso mais avançado(como [µMatrix](https://github.com/gorhill/uMatrix)).
 
 _EasyList_, _Peter Lowe's Adservers_, _EasyPrivacy_ e _Malware domains_ são carregadas por padrão quando você instala o uBlock Origin. Muitas outras listas estão disponíveis para bloquear rastreadores, sistemas analíticos e muito mais. Arquivos de hosts também são suportados.
 
